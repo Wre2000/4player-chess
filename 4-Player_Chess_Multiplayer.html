@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>4-Player Chess Online (iPad & Tablet Edition)</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pRed: '#ef4444',
+                        pBlue: '#3b82f6',
+                        pYellow: '#eab308',
+                        pGreen: '#22c55e',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* 14x14 Grid for 4-Player Chess layout */
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(14, minmax(0, 1fr));
+            grid-template-rows: repeat(14, minmax(0, 1fr));
+            aspect-ratio: 1 / 1;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        /* Square styling */
+        .square-light { background-color: #eeeed2; }
+        .square-dark { background-color: #769656; }
+        .square-out-of-bounds { background-color: transparent; pointer-events: none; border: none !important; }
+        
+        .square-selected { background-color: #baca44 !important; }
+        .square-last-move { background-color: rgba(245, 203, 66, 0.5) !important; }
+        .square-in-check { background-color: #f87171 !important; animation: pulse 1.2s infinite; }
+
+        .move-dot {
+            width: 32%;
+            height: 32%;
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .capture-ring {
+            position: absolute;
+            inset: 4px;
+            border: 4px solid rgba(239, 68, 68, 0.75);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .piece-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.4s ease;
+        }
+
+        .piece-svg {
+            width: 85%;
+            height: 85%;
+            filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.4));
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .active-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); border-color: #ef4444 !important; }
+        .active-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); border-color: #3b82f6 !important; }
+        .active-yellow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.6); border-color: #eab308 !important; }
+        .active-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.6); border-color: #22c55e !important; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center p-2 sm:p-4 text-slate-100">
+
+    <!-- Lobby / Room Selection Modal -->
+    <div id="lobby-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl space-y-6">
+            <div class="space-y-2">
+                <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
+                    <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
+                </div>
+                <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
+                    4-Player Chess Online
+                </h2>
+                <p class="text-xs text-slate-400">Play live real-time 4-player chess across multiple iPads & devices</p>
+            </div>
+
+            <div class="space-y-3">
+                <button id="btn-create-room" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Create New Room
+                </button>
+
+                <div class="flex items-center gap-2 my-2">
+                    <div class="h-px bg-slate-700 flex-1"></div>
+                    <span class="text-xs text-slate-500 font-semibold uppercase">Or Join Game</span>
+                    <div class="h-px bg-slate-700 flex-1"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-room-code" placeholder="Enter 6-letter Code" maxlength="6" class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
+                    <button id="btn-join-room" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
+                        Join
+                    </button>
+                </div>
+            </div>
+
+            <div id="lobby-error" class="text-xs text-red-400 font-semibold hidden"></div>
+        </div>
+    </div>
+
+    <!-- Top Header Bar -->
+    <header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-indigo-600 rounded-xl shadow-md">
+                <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight">4-Player Chess</h1>
+                    <span id="room-badge" class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold">No Room</span>
+                </div>
+                <p id="role-indicator" class="text-xs text-slate-400">Seat: Spectator</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="share-btn" title="Share Room Link" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Share</span>
+            </button>
+            <button id="rotate-btn" title="Rotate Board" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
+                <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Orient</span>
+            </button>
+            <button id="toggle-bot-btn" title="Add Bots to Empty Seats" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
+                <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i>
+                <span class="hidden md:inline">Bots</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
+        
+        <!-- Left Side: Player Seats (Yellow / Blue) -->
+        <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
+            <!-- Yellow Player (Top) -->
+            <div id="card-yellow" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                        <span id="name-yellow" class="font-bold text-xs text-yellow-400">Yellow (Top)</span>
+                    </div>
+                    <button onclick="claimSeat('yellow')" id="seat-btn-yellow" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
+                </div>
+                <div id="captured-yellow" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
+            </div>
+
+            <!-- Blue Player (Left) -->
+            <div id="card-blue" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span id="name-blue" class="font-bold text-xs text-blue-400">Blue (Left)</span>
+                    </div>
+                    <button onclick="claimSeat('blue')" id="seat-btn-blue" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
+                </div>
+                <div id="captured-blue" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
+            </div>
+        </div>
+
+        <!-- Center Container: Chessboard -->
+        <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
+            <div id="board" class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
+                <!-- Squares injected dynamically -->
+            </div>
+
+            <!-- Turn Banner Overlay -->
+            <div id="notification-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-700 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-xl backdrop-blur-md pointer-events-none transition-all duration-300 z-20">
+                Banner Notice
+            </div>
+        </div>
+
+        <!-- Right Side: Player Seats (Green / Red) & Move History -->
+        <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
+            <div class="flex flex-row lg:flex-col gap-2">
+                <!-- Green Player (Right) -->
+                <div id="card-green" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                            <span id="name-green" class="font-bold text-xs text-green-400">Green (Right)</span>
+                        </div>
+                        <button onclick="claimSeat('green')" id="seat-btn-green" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
+                    </div>
+                    <div id="captured-green" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
+                </div>
+
+                <!-- Red Player (Bottom) -->
+                <div id="card-red" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <span id="name-red" class="font-bold text-xs text-red-400">Red (Bottom)</span>
+                        </div>
+                        <button onclick="claimSeat('red')" id="seat-btn-red" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
+                    </div>
+                    <div id="captured-red" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
+                </div>
+            </div>
+
+            <!-- Move History & Log -->
+            <div class="glass-panel p-3 rounded-2xl flex-1 max-h-36 lg:max-h-48 flex flex-col">
+                <div class="flex justify-between items-center pb-1.5 border-b border-slate-700 mb-2">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-400"></i> Move Log
+                    </span>
+                    <span id="move-count" class="text-[11px] text-slate-400">Live Sync</span>
+                </div>
+                <div id="move-log" class="flex-1 overflow-y-auto space-y-1 text-xs pr-1 font-mono">
+                    <div class="text-slate-500 italic text-center py-2">Join a room to begin!</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pawn Promotion Modal -->
+    <div id="promotion-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel border-2 border-indigo-500/50 rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-1">Promote Pawn</h3>
+            <p class="text-xs text-slate-400 mb-4">Choose a piece to upgrade your pawn</p>
+            <div id="promotion-options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        lucide.createIcons();
+
+        /* ==========================================================================
+           FIREBASE INITIALIZATION & MANDATORY RULE COMPLIANCE
+           ========================================================================== */
+        const appId = typeof __app_id !== 'undefined' ? __app_id : '4player-chess-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "demo", authDomain: "demo.firebaseapp.com", projectId: "demo" };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let roomCode = null;
+        let roomDocRef = null;
+        let unsubscribeRoom = null;
+
+        // Web Audio Synthesizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'move') {
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+            } else if (type === 'capture') {
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+            }
+        }
+
+        /* ==========================================================================
+           GAME CONSTANTS & BOARD LOGIC
+           ========================================================================== */
+        const BOARD_SIZE = 14;
+        const PLAYERS = ['red', 'blue', 'yellow', 'green'];
+        const PLAYER_NAMES = { red: 'Red', blue: 'Blue', yellow: 'Yellow', green: 'Green' };
+        
+        const SEAT_ROTATIONS = { red: 0, blue: 270, yellow: 180, green: 90 };
+
+        const PIECE_COLORS = {
+            red: { fill: '#ef4444', stroke: '#991b1b', accent: '#fca5a5' },
+            blue: { fill: '#3b82f6', stroke: '#1e40af', accent: '#93c5fd' },
+            yellow: { fill: '#eab308', stroke: '#854d0e', accent: '#fef08a' },
+            green: { fill: '#22c55e', stroke: '#166534', accent: '#86efac' },
+            gray: { fill: '#64748b', stroke: '#334155', accent: '#cbd5e1' }
+        };
+
+        const PAWN_DIRECTIONS = {
+            red: { r: -1, c: 0 },
+            blue: { r: 0, c: 1 },
+            yellow: { r: 1, c: 0 },
+            green: { r: 0, c: -1 }
+        };
+
+        let localState = {
+            board: Array(14).fill(null).map(() => Array(14).fill(null)),
+            currentPlayerIdx: 0,
+            eliminated: { red: false, blue: false, yellow: false, green: false },
+            seats: { red: null, blue: null, yellow: null, green: null },
+            bots: { red: false, blue: false, yellow: false, green: false },
+            selectedSquare: null,
+            validMoves: [],
+            lastMove: null,
+            capturedPieces: { red: [], blue: [], yellow: [], green: [] },
+            boardRotation: 0,
+            mySeat: null
+        };
+
+        function isValidSquare(r, c) {
+            if (r < 0 || r >= 14 || c < 0 || c >= 14) return false;
+            const topRows = r < 3; const bottomRows = r > 10;
+            const leftCols = c < 3; const rightCols = c > 10;
+            if ((topRows && leftCols) || (topRows && rightCols) || 
+                (bottomRows && leftCols) || (bottomRows && rightCols)) return false;
+            return true;
+        }
+
+        function getPieceSVG(type, colorKey) {
+            const colors = PIECE_COLORS[colorKey] || PIECE_COLORS.red;
+            const stroke = colors.stroke;
+            const fill = colors.fill;
+            const accent = colors.accent;
+
+            const paths = {
+                p: `<path d="M 12 28 C 12 28 14 20 12 16 C 10 13 11 9 16 8 C 21 9 22 13 20 16 C 18 20 20 28 20 28 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <circle cx="16" cy="7" r="4" fill="${accent}" stroke="${stroke}" stroke-width="1.5"/>
+                    <path d="M 9 28 L 23 28 L 21 31 L 11 31 Z" fill="${stroke}"/>`,
+                r: `<path d="M 9 29 L 23 29 L 22 15 L 20 15 L 20 18 L 17 18 L 17 15 L 15 15 L 15 18 L 12 18 L 12 15 L 10 15 L 9 29 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <rect x="8" y="27" width="16" height="4" rx="1" fill="${stroke}"/>`,
+                n: `<path d="M 9 29 L 23 29 C 23 29 24 21 21 17 C 19 14 19 10 15 8 C 12 8 10 11 10 14 C 10 17 8 18 7 20 C 6 22 8 25 11 24 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <circle cx="12" cy="11" r="1.5" fill="${accent}"/>`,
+                b: `<path d="M 9 29 L 23 29 L 21 20 C 23 16 21 11 16 9 C 11 11 9 16 11 20 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <circle cx="16" cy="6" r="2.5" fill="${accent}" stroke="${stroke}" stroke-width="1"/>`,
+                q: `<path d="M 8 29 L 24 29 L 23 16 L 19 22 L 16 12 L 13 22 L 9 16 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <circle cx="16" cy="9" r="2" fill="${accent}"/>`,
+                k: `<path d="M 8 29 L 24 29 L 22 17 L 16 14 L 10 17 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+                    <line x1="16" y1="6" x2="16" y2="13" stroke="${accent}" stroke-width="2.5"/>`
+            };
+
+            return `<svg viewBox="0 0 32 32" class="piece-svg">${paths[type] || ''}</svg>`;
+        }
+
+        function buildInitialBoard() {
+            const board = Array(14).fill(null).map(() => Array(14).fill(null));
+            const backline = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
+            const pawns = Array(8).fill('p');
+
+            const placeRow = (r, startC, pieces, p) => pieces.forEach((pt, i) => board[r][startC + i] = { type: pt, player: p, moved: false });
+            const placeCol = (c, startR, pieces, p) => pieces.forEach((pt, i) => board[startR + i][c] = { type: pt, player: p, moved: false });
+
+            placeRow(13, 3, backline, 'red'); placeRow(12, 3, pawns, 'red');
+            placeRow(0, 3, [...backline].reverse(), 'yellow'); placeRow(1, 3, pawns, 'yellow');
+            placeCol(0, 3, backline, 'blue'); placeCol(1, 3, pawns, 'blue');
+            placeCol(13, 3, [...backline].reverse(), 'green'); placeCol(12, 3, pawns, 'green');
+
+            return board;
+        }
+
+        const boardEl = document.getElementById('board');
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            boardEl.style.transform = `rotate(${localState.boardRotation}deg)`;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const squareEl = document.createElement('div');
+                    squareEl.dataset.row = r;
+                    squareEl.dataset.col = c;
+
+                    if (!isValidSquare(r, c)) {
+                        squareEl.className = 'square square-out-of-bounds';
+                    } else {
+                        const isLight = (r + c) % 2 === 0;
+                        squareEl.className = `square ${isLight ? 'square-light' : 'square-dark'}`;
+
+                        if (localState.selectedSquare && localState.selectedSquare.r === r && localState.selectedSquare.c === c) {
+                            squareEl.classList.add('square-selected');
+                        }
+
+                        if (localState.lastMove && ((localState.lastMove.from.r === r && localState.lastMove.from.c === c) || 
+                            (localState.lastMove.to.r === r && localState.lastMove.to.c === c))) {
+                            squareEl.classList.add('square-last-move');
+                        }
+
+                        const isTarget = localState.validMoves.some(m => m.r === r && m.c === c);
+                        if (isTarget) {
+                            const targetPiece = localState.board[r][c];
+                            if (targetPiece) {
+                                const ring = document.createElement('div');
+                                ring.className = 'capture-ring';
+                                squareEl.appendChild(ring);
+                            } else {
+                                const dot = document.createElement('div');
+                                dot.className = 'move-dot';
+                                squareEl.appendChild(dot);
+                            }
+                        }
+
+                        const piece = localState.board[r][c];
+                        if (piece) {
+                            const pieceWrapper = document.createElement('div');
+                            pieceWrapper.className = 'piece-wrapper';
+                            pieceWrapper.style.transform = `rotate(-${localState.boardRotation}deg)`;
+                            pieceWrapper.innerHTML = getPieceSVG(piece.type, piece.player);
+                            squareEl.appendChild(pieceWrapper);
+                        }
+
+                        squareEl.addEventListener('click', () => handleSquareClick(r, c));
+                    }
+                    boardEl.appendChild(squareEl);
+                }
+            }
+            updateUI();
+        }
+
+        function handleSquareClick(r, c) {
+            const activePlayer = PLAYERS[localState.currentPlayerIdx];
+
+            // Verify if user is sitting in the active seat
+            if (localState.mySeat !== activePlayer) return;
+
+            if (localState.selectedSquare) {
+                const move = localState.validMoves.find(m => m.r === r && m.c === c);
+                if (move) {
+                    dispatchMove(localState.selectedSquare, { r, c });
+                    localState.selectedSquare = null;
+                    localState.validMoves = [];
+                    return;
+                }
+            }
+
+            const piece = localState.board[r][c];
+            if (piece && piece.player === activePlayer) {
+                localState.selectedSquare = { r, c };
+                localState.validMoves = getValidMovesForPiece(r, c);
+            } else {
+                localState.selectedSquare = null;
+                localState.validMoves = [];
+            }
+
+            renderBoard();
+        }
+
+        async function dispatchMove(from, to) {
+            if (!roomDocRef) return;
+
+            const piece = localState.board[from.r][from.c];
+            const target = localState.board[to.r][to.c];
+
+            const newBoard = JSON.parse(JSON.stringify(localState.board));
+            newBoard[to.r][to.c] = piece;
+            newBoard[from.r][from.c] = null;
+            piece.moved = true;
+
+            const newCaptured = JSON.parse(JSON.stringify(localState.capturedPieces));
+            const newEliminated = { ...localState.eliminated };
+
+            if (target) {
+                newCaptured[piece.player].push(target);
+                if (target.type === 'k') {
+                    newEliminated[target.player] = true;
+                    // Gray out eliminated player's pieces
+                    for (let r = 0; r < 14; r++) {
+                        for (let c = 0; c < 14; c++) {
+                            if (newBoard[r][c] && newBoard[r][c].player === target.player) {
+                                newBoard[r][c].player = 'gray';
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Find next active player
+            let nextIdx = localState.currentPlayerIdx;
+            let iter = 0;
+            do {
+                nextIdx = (nextIdx + 1) % PLAYERS.length;
+                iter++;
+            } while (newEliminated[PLAYERS[nextIdx]] && iter < 4);
+
+            const lastMoveData = { from, to, player: piece.player, captured: !!target };
+
+            try {
+                await updateDoc(roomDocRef, {
+                    boardStr: JSON.stringify(newBoard),
+                    currentPlayerIdx: nextIdx,
+                    eliminated: newEliminated,
+                    capturedPieces: newCaptured,
+                    lastMove: lastMoveData,
+                    updatedAt: Date.now()
+                });
+            } catch (err) {
+                console.error("Move update failed:", err);
+            }
+        }
+
+        function checkAndTriggerBotMove() {
+            const activePlayer = PLAYERS[localState.currentPlayerIdx];
+            if (localState.bots[activePlayer] && !localState.eliminated[activePlayer]) {
+                // Only host or first connected user triggers bot move to avoid duplicates
+                if (localState.mySeat === 'red' || !localState.seats.red) {
+                    setTimeout(() => runBotTurn(activePlayer), 600);
+                }
+            }
+        }
+
+        function runBotTurn(player) {
+            const allMoves = [];
+            for (let r = 0; r < 14; r++) {
+                for (let c = 0; c < 14; c++) {
+                    const piece = localState.board[r][c];
+                    if (piece && piece.player === player) {
+                        const moves = getValidMovesForPiece(r, c);
+                        moves.forEach(m => allMoves.push({ from: { r, c }, to: m }));
+                    }
+                }
+            }
+
+            if (allMoves.length > 0) {
+                // Prioritize captures
+                const captures = allMoves.filter(m => localState.board[m.to.r][m.to.c]);
+                const chosen = captures.length > 0 
+                    ? captures[Math.floor(Math.random() * captures.length)] 
+                    : allMoves[Math.floor(Math.random() * allMoves.length)];
+
+                dispatchMove(chosen.from, chosen.to);
+            }
+        }
+
+        function getValidMovesForPiece(r, c) {
+            const piece = localState.board[r][c];
+            if (!piece) return [];
+            let moves = [];
+
+            switch (piece.type) {
+                case 'p':
+                    const dir = PAWN_DIRECTIONS[piece.player];
+                    const fr = r + dir.r, fc = c + dir.c;
+                    if (isValidSquare(fr, fc) && !localState.board[fr][fc]) {
+                        moves.push({ r: fr, c: fc });
+                        if (!piece.moved) {
+                            const f2r = r + dir.r * 2, f2c = c + dir.c * 2;
+                            if (isValidSquare(f2r, f2c) && !localState.board[f2r][f2c]) moves.push({ r: f2r, c: f2c });
+                        }
+                    }
+                    const captureOffsets = dir.r !== 0 
+                        ? [{ r: dir.r, c: -1 }, { r: dir.r, c: 1 }]
+                        : [{ r: -1, c: dir.c }, { r: 1, c: dir.c }];
+                    for (const off of captureOffsets) {
+                        const cr = r + off.r, cc = c + off.c;
+                        if (isValidSquare(cr, cc)) {
+                            const target = localState.board[cr][cc];
+                            if (target && target.player !== piece.player) moves.push({ r: cr, c: cc });
+                        }
+                    }
+                    break;
+
+                case 'n':
+                    const nOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+                    for (const [dr, dc] of nOffsets) {
+                        const nr = r + dr, nc = c + dc;
+                        if (isValidSquare(nr, nc)) {
+                            const target = localState.board[nr][nc];
+                            if (!target || target.player !== piece.player) moves.push({ r: nr, c: nc });
+                        }
+                    }
+                    break;
+
+                case 'b':
+                    moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1]]);
+                    break;
+                case 'r':
+                    moves = getRayMoves(r, c, piece, [[1,0], [-1,0], [0,1], [0,-1]]);
+                    break;
+                case 'q':
+                    moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1], [1,0], [-1,0], [0,1], [0,-1]]);
+                    break;
+                case 'k':
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            const nr = r + dr, nc = c + dc;
+                            if (isValidSquare(nr, nc)) {
+                                const target = localState.board[nr][nc];
+                                if (!target || target.player !== piece.player) moves.push({ r: nr, c: nc });
+                            }
+                        }
+                    }
+                    break;
+            }
+            return moves;
+        }
+
+        function getRayMoves(r, c, piece, directions) {
+            const moves = [];
+            for (const [dr, dc] of directions) {
+                let nr = r + dr, nc = c + dc;
+                while (isValidSquare(nr, nc)) {
+                    const target = localState.board[nr][nc];
+                    if (!target) moves.push({ r: nr, c: nc });
+                    else {
+                        if (target.player !== piece.player) moves.push({ r: nr, c: nc });
+                        break;
+                    }
+                    nr += dr; nc += dc;
+                }
+            }
+            return moves;
+        }
+
+        async function initAuth() {
+            if (typeof __initial_auth_token !== 'undefined') {
+                const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                currentUser = cred.user;
+            } else {
+                const cred = await signInAnonymously(auth);
+                currentUser = cred.user;
+            }
+        }
+
+        window.claimSeat = async function(seatColor) {
+            if (!roomDocRef || !currentUser) return;
+            try {
+                const updatedSeats = { ...localState.seats, [seatColor]: currentUser.uid };
+                const updatedBots = { ...localState.bots, [seatColor]: false };
+                await updateDoc(roomDocRef, { seats: updatedSeats, bots: updatedBots });
+                
+                localState.mySeat = seatColor;
+                localState.boardRotation = SEAT_ROTATIONS[seatColor];
+                renderBoard();
+            } catch (err) {
+                console.error("Seat claim error:", err);
+            }
+        };
+
+        function subscribeToRoom(code) {
+            if (unsubscribeRoom) unsubscribeRoom();
+            
+            // STRICT RULE 1 MANDATORY PATH: /artifacts/{appId}/public/data/{collectionName}
+            roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+
+            unsubscribeRoom = onSnapshot(roomDocRef, (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+
+                localState.board = JSON.parse(data.boardStr);
+                localState.currentPlayerIdx = data.currentPlayerIdx;
+                localState.eliminated = data.eliminated;
+                localState.seats = data.seats;
+                localState.bots = data.bots;
+                localState.capturedPieces = data.capturedPieces;
+
+                if (data.lastMove) {
+                    if (!localState.lastMove || localState.lastMove.from.r !== data.lastMove.from.r) {
+                        playSound(data.lastMove.captured ? 'capture' : 'move');
+                    }
+                    localState.lastMove = data.lastMove;
+                }
+
+                // Identify player seat
+                if (currentUser) {
+                    const foundSeat = Object.keys(data.seats).find(s => data.seats[s] === currentUser.uid);
+                    if (foundSeat) {
+                        localState.mySeat = foundSeat;
+                        localState.boardRotation = SEAT_ROTATIONS[foundSeat];
+                    }
+                }
+
+                renderBoard();
+                checkAndTriggerBotMove();
+            }, (err) => console.error("Firestore listener error:", err));
+        }
+
+        document.getElementById('btn-create-room').addEventListener('click', async () => {
+            await initAuth();
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            roomCode = code;
+
+            const initialBoard = buildInitialBoard();
+            // RULE 1: /artifacts/{appId}/public/data/{collectionName}/{documentId}
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+
+            await setDoc(roomRef, {
+                boardStr: JSON.stringify(initialBoard),
+                currentPlayerIdx: 0,
+                eliminated: { red: false, blue: false, yellow: false, green: false },
+                seats: { red: currentUser.uid, blue: null, yellow: null, green: null },
+                bots: { red: false, blue: false, yellow: false, green: false },
+                capturedPieces: { red: [], blue: [], yellow: [], green: [] },
+                createdAt: Date.now()
+            });
+
+            document.getElementById('room-badge').innerText = `Room: ${code}`;
+            document.getElementById('lobby-modal').classList.add('hidden');
+            subscribeToRoom(code);
+        });
+
+        document.getElementById('btn-join-room').addEventListener('click', async () => {
+            const input = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (input.length !== 6) return;
+            await initAuth();
+            roomCode = input;
+            document.getElementById('room-badge').innerText = `Room: ${input}`;
+            document.getElementById('lobby-modal').classList.add('hidden');
+            subscribeToRoom(input);
+        });
+
+        document.getElementById('share-btn').addEventListener('click', () => {
+            if (!roomCode) return;
+            navigator.clipboard.writeText(roomCode);
+            alert(`Room Code copied: ${roomCode}`);
+        });
+
+        document.getElementById('rotate-btn').addEventListener('click', () => {
+            localState.boardRotation = (localState.boardRotation + 90) % 360;
+            renderBoard();
+        });
+
+        document.getElementById('toggle-bot-btn').addEventListener('click', async () => {
+            if (!roomDocRef) return;
+            const updatedBots = { ...localState.bots };
+            PLAYERS.forEach(p => {
+                if (!localState.seats[p]) updatedBots[p] = true;
+            });
+            await updateDoc(roomDocRef, { bots: updatedBots });
+        });
+
+        function updateUI() {
+            const activePlayer = PLAYERS[localState.currentPlayerIdx];
+            document.getElementById('role-indicator').innerText = localState.mySeat 
+                ? `Seat: ${PLAYER_NAMES[localState.mySeat]}` 
+                : 'Seat: Spectator';
+
+            PLAYERS.forEach(p => {
+                const card = document.getElementById(`card-${p}`);
+                const seatBtn = document.getElementById(`seat-btn-${p}`);
+                const nameEl = document.getElementById(`name-${p}`);
+                const capturedContainer = document.getElementById(`captured-${p}`);
+
+                card.className = `player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 transition-all ${
+                    p === activePlayer ? `active-${p}` : 'border-transparent'
+                }`;
+
+                if (localState.seats[p]) {
+                    seatBtn.className = 'hidden';
+                    nameEl.innerText = `${PLAYER_NAMES[p]} (${localState.seats[p] === currentUser?.uid ? 'You' : 'Player'})`;
+                } else if (localState.bots[p]) {
+                    seatBtn.className = 'hidden';
+                    nameEl.innerText = `${PLAYER_NAMES[p]} (Bot)`;
+                } else {
+                    seatBtn.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition';
+                    nameEl.innerText = `${PLAYER_NAMES[p]} (Open)`;
+                }
+
+                capturedContainer.innerHTML = '';
+                localState.capturedPieces[p].forEach(piece => {
+                    const capSpan = document.createElement('span');
+                    capSpan.className = 'w-4 h-4 inline-block opacity-80';
+                    capSpan.innerHTML = getPieceSVG(piece.type, piece.player);
+                    capturedContainer.appendChild(capSpan);
+                });
+            });
+        }
+
+        // Initialize Local Board View
+        localState.board = buildInitialBoard();
+        renderBoard();
+    </script>
+</body>
+</html>
