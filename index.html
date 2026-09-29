@@ -1,427 +1,688 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>4-Player Chess Online</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        pRed: '#ef4444',
-                        pBlue: '#3b82f6',
-                        pYellow: '#eab308',
-                        pGreen: '#22c55e'
-                    }
-                }
+<title>4-Player Chess Online</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                pRed: '#ef4444',
+                pBlue: '#3b82f6',
+                pYellow: '#eab308',
+                pGreen: '#22c55e'
             }
-        };
-    </script>
-
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- FIREBASE CONFIG / SDK LEFT UNCHANGED -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-    <style>
-        * {
-            box-sizing: border-box;
         }
+    }
+};
+</script>
 
-        html,
-        body {
-            margin: 0;
-            min-height: 100%;
-        }
+<script src="https://unpkg.com/lucide@latest"></script>
 
-        body {
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-                Roboto, sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
+<!-- FIREBASE CONFIG UNCHANGED -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-        button,
-        input {
-            -webkit-tap-highlight-color: transparent;
-        }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-        button {
-            touch-action: manipulation;
-        }
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
 
-        .board-grid {
-            display: grid;
-            grid-template-columns: repeat(14, minmax(0, 1fr));
-            grid-template-rows: repeat(14, minmax(0, 1fr));
-            aspect-ratio: 1 / 1;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .7);
-            transition: transform .4s cubic-bezier(.4, 0, .2, 1);
-            transform-origin: center;
-        }
+body {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    overflow-x: hidden;
+}
 
-        .square {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            transition: background-color .12s ease;
-            min-width: 0;
-            min-height: 0;
-        }
+button,
+input {
+    -webkit-tap-highlight-color: transparent;
+}
 
-        .square-light {
-            background: #eeeed2;
-        }
+button {
+    touch-action: manipulation;
+}
 
-        .square-dark {
-            background: #769656;
-        }
+.board-grid {
+    display: grid;
+    grid-template-columns: repeat(14, minmax(0, 1fr));
+    grid-template-rows: repeat(14, minmax(0, 1fr));
+    aspect-ratio: 1 / 1;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .7);
+    transition: transform .4s cubic-bezier(.4, 0, .2, 1);
+    transform-origin: center;
+}
 
-        .square-out-of-bounds {
-            background: transparent;
-            pointer-events: none;
-            border: none !important;
-        }
+.square {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    min-width: 0;
+    min-height: 0;
+}
 
-        .square-selected {
-            background: #baca44 !important;
-        }
+.square-light {
+    background-color: #eeeed2;
+}
 
-        .square-last-move {
-            background: rgba(245, 203, 66, .5) !important;
-        }
+.square-dark {
+    background-color: #769656;
+}
 
-        .move-dot {
-            width: 30%;
-            height: 30%;
-            background: rgba(0, 0, 0, .28);
-            border-radius: 50%;
-            pointer-events: none;
-        }
+.square-out-of-bounds {
+    background: transparent;
+    pointer-events: none;
+    border: none !important;
+}
 
-        .capture-ring {
-            position: absolute;
-            inset: 4px;
-            border: 4px solid rgba(239, 68, 68, .75);
-            border-radius: 50%;
-            pointer-events: none;
-        }
+.square-selected {
+    background-color: #baca44 !important;
+}
 
-        .piece-wrapper {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform .4s ease;
-            pointer-events: none;
-        }
+.square-last-move {
+    background-color: rgba(245, 203, 66, .5) !important;
+}
 
-        .piece-svg {
-            width: 85%;
-            height: 85%;
-            filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
-            pointer-events: none;
-        }
+.move-dot {
+    width: 30%;
+    height: 30%;
+    background: rgba(0, 0, 0, .28);
+    border-radius: 50%;
+    pointer-events: none;
+}
 
-        .glass-panel {
-            background: rgba(30, 41, 59, .85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,.1);
-        }
+.capture-ring {
+    position: absolute;
+    inset: 4px;
+    border: 4px solid rgba(239, 68, 68, .75);
+    border-radius: 50%;
+    pointer-events: none;
+}
 
-        .active-red {
-            box-shadow: 0 0 20px rgba(239,68,68,.6);
-            border-color: #ef4444 !important;
-        }
+.piece-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
 
-        .active-blue {
-            box-shadow: 0 0 20px rgba(59,130,246,.6);
-            border-color: #3b82f6 !important;
-        }
+.piece-svg {
+    width: 85%;
+    height: 85%;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
+    pointer-events: none;
+}
 
-        .active-yellow {
-            box-shadow: 0 0 20px rgba(234,179,8,.6);
-            border-color: #eab308 !important;
-        }
+.glass-panel {
+    background: rgba(30, 41, 59, .85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.1);
+}
 
-        .active-green {
-            box-shadow: 0 0 20px rgba(34,197,94,.6);
-            border-color: #22c55e !important;
-        }
+.active-red {
+    box-shadow: 0 0 20px rgba(239,68,68,.6);
+    border-color: #ef4444 !important;
+}
 
-        .disabled-button {
-            opacity: .45;
-            pointer-events: none;
-        }
-    </style>
+.active-blue {
+    box-shadow: 0 0 20px rgba(59,130,246,.6);
+    border-color: #3b82f6 !important;
+}
+
+.active-yellow {
+    box-shadow: 0 0 20px rgba(234,179,8,.6);
+    border-color: #eab308 !important;
+}
+
+.active-green {
+    box-shadow: 0 0 20px rgba(34,197,94,.6);
+    border-color: #22c55e !important;
+}
+
+.disabled-button {
+    opacity: .45;
+    pointer-events: none;
+}
+
+.bot-option {
+    cursor: pointer;
+}
+
+.bot-option input {
+    display: none;
+}
+
+.bot-option-card {
+    border: 2px solid #334155;
+    transition: .15s;
+}
+
+.bot-option input:checked + .bot-option-card {
+    border-color: #6366f1;
+    background: rgba(99,102,241,.18);
+    box-shadow: 0 0 18px rgba(99,102,241,.2);
+}
+
+.bot-seat {
+    color: #34d399;
+}
+</style>
 </head>
 
 <body class="min-h-screen flex flex-col items-center p-2 sm:p-4">
 
-    <!-- LOBBY -->
-    <div id="lobby-modal"
-         class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+<!-- =========================================================
+     LOBBY
+========================================================= -->
 
-        <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
+<div id="lobby-modal"
+     class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
 
-            <div class="space-y-2 mb-6">
-                <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
-                    <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
-                </div>
+    <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
 
-                <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
-                    4-Player Chess Online
-                </h2>
+        <div class="space-y-2 mb-6">
 
-                <p class="text-xs text-slate-400">
-                    Play live 4-player chess with your friends.
-                </p>
+            <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
+                <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
             </div>
 
-            <div class="space-y-3">
+            <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
+                4-Player Chess Online
+            </h2>
+
+            <p class="text-xs text-slate-400">
+                Play live 4-player chess with your friends.
+            </p>
+
+        </div>
+
+        <!-- CREATE GAME -->
+
+        <div id="lobby-main">
+
+            <button
+                id="btn-create-room"
+                type="button"
+                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg flex items-center justify-center gap-2">
+
+                <i data-lucide="plus-circle" class="w-5 h-5"></i>
+
+                Create New Room
+
+            </button>
+
+            <div class="flex items-center gap-2 my-4">
+
+                <div class="h-px bg-slate-700 flex-1"></div>
+
+                <span class="text-xs text-slate-500 font-semibold uppercase">
+                    Or Join Game
+                </span>
+
+                <div class="h-px bg-slate-700 flex-1"></div>
+
+            </div>
+
+            <div class="flex gap-2">
+
+                <input
+                    type="text"
+                    id="input-room-code"
+                    placeholder="ENTER ROOM CODE"
+                    maxlength="6"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
 
                 <button
-                    id="btn-create-room"
+                    id="btn-join-room"
                     type="button"
-                    class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg flex items-center justify-center gap-2">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                    Create New Room
+                    class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
+
+                    Join
+
                 </button>
 
-                <div class="flex items-center gap-2 my-2">
-                    <div class="h-px bg-slate-700 flex-1"></div>
-                    <span class="text-xs text-slate-500 font-semibold uppercase">
-                        Or Join Game
-                    </span>
-                    <div class="h-px bg-slate-700 flex-1"></div>
-                </div>
-
-                <div class="flex gap-2">
-
-                    <input
-                        type="text"
-                        id="input-room-code"
-                        placeholder="ENTER ROOM CODE"
-                        maxlength="6"
-                        autocomplete="off"
-                        autocapitalize="characters"
-                        class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
-
-                    <button
-                        id="btn-join-room"
-                        type="button"
-                        class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
-                        Join
-                    </button>
-
-                </div>
-
-                <p id="lobby-status" class="text-xs text-slate-400 min-h-[18px]"></p>
             </div>
+
         </div>
+
+        <!-- BOT SELECTION -->
+
+        <div id="bot-selection" class="hidden">
+
+            <div class="text-left mb-4">
+
+                <button
+                    id="back-to-lobby"
+                    type="button"
+                    class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+
+                    Back
+
+                </button>
+
+            </div>
+
+            <h3 class="text-lg font-bold mb-1">
+                Create Game
+            </h3>
+
+            <p class="text-xs text-slate-400 mb-5">
+                Choose how many computer players you want.
+            </p>
+
+            <div class="grid grid-cols-4 gap-2 mb-5">
+
+                <label class="bot-option">
+                    <input
+                        type="radio"
+                        name="bot-count"
+                        value="0"
+                        checked>
+
+                    <div class="bot-option-card rounded-2xl p-3">
+
+                        <div class="text-xl font-black">
+                            0
+                        </div>
+
+                        <div class="text-[10px] text-slate-400">
+                            Bots
+                        </div>
+
+                    </div>
+                </label>
+
+                <label class="bot-option">
+                    <input
+                        type="radio"
+                        name="bot-count"
+                        value="1">
+
+                    <div class="bot-option-card rounded-2xl p-3">
+
+                        <div class="text-xl font-black">
+                            1
+                        </div>
+
+                        <div class="text-[10px] text-slate-400">
+                            Bot
+                        </div>
+
+                    </div>
+                </label>
+
+                <label class="bot-option">
+                    <input
+                        type="radio"
+                        name="bot-count"
+                        value="2">
+
+                    <div class="bot-option-card rounded-2xl p-3">
+
+                        <div class="text-xl font-black">
+                            2
+                        </div>
+
+                        <div class="text-[10px] text-slate-400">
+                            Bots
+                        </div>
+
+                    </div>
+                </label>
+
+                <label class="bot-option">
+                    <input
+                        type="radio"
+                        name="bot-count"
+                        value="3">
+
+                    <div class="bot-option-card rounded-2xl p-3">
+
+                        <div class="text-xl font-black">
+                            3
+                        </div>
+
+                        <div class="text-[10px] text-slate-400">
+                            Bots
+                        </div>
+
+                    </div>
+                </label>
+
+            </div>
+
+            <div class="bg-slate-900/60 rounded-2xl p-4 text-left mb-5">
+
+                <div class="text-xs font-semibold mb-3 text-slate-300">
+                    Starting seats
+                </div>
+
+                <div class="space-y-2 text-xs">
+
+                    <div class="flex justify-between">
+                        <span class="text-red-400">
+                            Red
+                        </span>
+
+                        <span>
+                            You
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-blue-400">
+                            Blue
+                        </span>
+
+                        <span id="preview-blue">
+                            Open
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-yellow-400">
+                            Yellow
+                        </span>
+
+                        <span id="preview-yellow">
+                            Open
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-green-400">
+                            Green
+                        </span>
+
+                        <span id="preview-green">
+                            Open
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <button
+                id="btn-confirm-create"
+                type="button"
+                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg">
+
+                Create Game
+
+            </button>
+
+        </div>
+
+        <p
+            id="lobby-status"
+            class="text-xs text-slate-400 min-h-[18px] mt-3">
+        </p>
+
+    </div>
+</div>
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
+
+    <div class="flex items-center space-x-3 min-w-0">
+
+        <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
+            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+        </div>
+
+        <div class="min-w-0">
+
+            <div class="flex items-center gap-2">
+
+                <h1 class="text-base sm:text-lg font-bold tracking-tight">
+                    4-Player Chess
+                </h1>
+
+                <span
+                    id="room-badge"
+                    class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                    No Room
+                </span>
+
+            </div>
+
+            <p id="role-indicator" class="text-xs text-slate-400">
+                Seat: Spectator
+            </p>
+
+        </div>
+
     </div>
 
-    <!-- HEADER -->
-    <header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
+    <div class="flex items-center space-x-1 sm:space-x-2">
 
-        <div class="flex items-center space-x-3 min-w-0">
+        <button
+            id="share-btn"
+            type="button"
+            class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
 
-            <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
-                <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
-            </div>
+            <i data-lucide="share-2" class="w-4 h-4"></i>
 
-            <div class="min-w-0">
+            <span class="hidden sm:inline">
+                Share
+            </span>
+
+        </button>
+
+        <button
+            id="rotate-btn"
+            type="button"
+            class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
+
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+
+            <span class="hidden md:inline">
+                Rotate
+            </span>
+
+        </button>
+
+    </div>
+
+</header>
+
+<!-- =========================================================
+     GAME
+========================================================= -->
+
+<main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
+
+    <!-- LEFT -->
+
+    <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
+
+        <div
+            id="card-yellow"
+            class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+
+            <div class="flex items-center justify-between">
 
                 <div class="flex items-center gap-2">
-                    <h1 class="text-base sm:text-lg font-bold tracking-tight">
-                        4-Player Chess
-                    </h1>
+
+                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
 
                     <span
-                        id="room-badge"
-                        class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                        No Room
+                        id="name-yellow"
+                        class="font-bold text-xs text-yellow-400">
+                        Yellow (Top)
                     </span>
+
                 </div>
 
-                <p id="role-indicator" class="text-xs text-slate-400">
-                    Seat: Spectator
-                </p>
+                <button
+                    id="seat-btn-yellow"
+                    data-seat="yellow"
+                    type="button"
+                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
+
+                    Claim
+
+                </button>
 
             </div>
-        </div>
-
-        <div class="flex items-center space-x-1 sm:space-x-2">
-
-            <button
-                id="share-btn"
-                type="button"
-                title="Share Room Code"
-                class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-                <i data-lucide="share-2" class="w-4 h-4"></i>
-                <span class="hidden sm:inline">Share</span>
-            </button>
-
-            <button
-                id="rotate-btn"
-                type="button"
-                title="Rotate Board"
-                class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-                <i data-lucide="rotate-cw" class="w-4 h-4"></i>
-                <span class="hidden md:inline">Rotate</span>
-            </button>
-
-            <button
-                id="toggle-bot-btn"
-                type="button"
-                title="Add Bots to Empty Seats"
-                class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-                <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i>
-                <span class="hidden md:inline">Bots</span>
-            </button>
 
         </div>
-    </header>
 
-    <!-- GAME -->
-    <main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
+        <div
+            id="card-blue"
+            class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
 
-        <!-- LEFT -->
-        <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
+            <div class="flex items-center justify-between">
+
+                <div class="flex items-center gap-2">
+
+                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+
+                    <span
+                        id="name-blue"
+                        class="font-bold text-xs text-blue-400">
+                        Blue (Left)
+                    </span>
+
+                </div>
+
+                <button
+                    id="seat-btn-blue"
+                    data-seat="blue"
+                    type="button"
+                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
+
+                    Claim
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- BOARD -->
+
+    <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
+
+        <div
+            id="board"
+            class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
+        </div>
+
+    </div>
+
+    <!-- RIGHT -->
+
+    <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
+
+        <div class="flex flex-row lg:flex-col gap-2">
 
             <div
-                id="card-yellow"
+                id="card-green"
                 class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
 
-                <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center justify-between">
 
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-                        <span id="name-yellow" class="font-bold text-xs text-yellow-400">
-                            Yellow (Top)
+
+                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+
+                        <span
+                            id="name-green"
+                            class="font-bold text-xs text-green-400">
+                            Green (Right)
                         </span>
+
                     </div>
 
                     <button
-                        id="seat-btn-yellow"
-                        data-seat="yellow"
+                        id="seat-btn-green"
+                        data-seat="green"
                         type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">
+                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
+
                         Claim
+
                     </button>
 
                 </div>
+
             </div>
 
             <div
-                id="card-blue"
+                id="card-red"
                 class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
 
-                <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center justify-between">
 
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-                        <span id="name-blue" class="font-bold text-xs text-blue-400">
-                            Blue (Left)
+
+                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+
+                        <span
+                            id="name-red"
+                            class="font-bold text-xs text-red-400">
+                            Red (Bottom)
                         </span>
+
                     </div>
 
                     <button
-                        id="seat-btn-blue"
-                        data-seat="blue"
+                        id="seat-btn-red"
+                        data-seat="red"
                         type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">
+                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
+
                         Claim
+
                     </button>
 
                 </div>
-            </div>
-        </div>
 
-        <!-- BOARD -->
-        <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
-
-            <div
-                id="board"
-                class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
             </div>
 
         </div>
 
-        <!-- RIGHT -->
-        <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
+    </div>
 
-            <div class="flex flex-row lg:flex-col gap-2">
-
-                <div
-                    id="card-green"
-                    class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-                    <div class="flex items-center justify-between mb-1.5">
-
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                            <span id="name-green" class="font-bold text-xs text-green-400">
-                                Green (Right)
-                            </span>
-                        </div>
-
-                        <button
-                            id="seat-btn-green"
-                            data-seat="green"
-                            type="button"
-                            class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">
-                            Claim
-                        </button>
-
-                    </div>
-                </div>
-
-                <div
-                    id="card-red"
-                    class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-                    <div class="flex items-center justify-between mb-1.5">
-
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                            <span id="name-red" class="font-bold text-xs text-red-400">
-                                Red (Bottom)
-                            </span>
-                        </div>
-
-                        <button
-                            id="seat-btn-red"
-                            data-seat="red"
-                            type="button"
-                            class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">
-                            Claim
-                        </button>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </main>
+</main>
 
 <script>
 "use strict";
 
 /* =========================================================
    FIREBASE
-   EXACT CONFIG PROVIDED BY USER
    ========================================================= */
 
 const firebaseConfig = {
@@ -435,6 +696,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const database = firebase.database();
 
 /* =========================================================
@@ -464,27 +726,38 @@ const SEAT_ROTATIONS = {
     green: 90
 };
 
+const BOT_SEATS = [
+    "blue",
+    "yellow",
+    "green"
+];
+
 const PIECE_COLORS = {
+
     red: {
         fill: "#ef4444",
         stroke: "#991b1b",
         accent: "#fca5a5"
     },
+
     blue: {
         fill: "#3b82f6",
         stroke: "#1e40af",
         accent: "#93c5fd"
     },
+
     yellow: {
         fill: "#eab308",
         stroke: "#854d0e",
         accent: "#fef08a"
     },
+
     green: {
         fill: "#22c55e",
         stroke: "#166534",
         accent: "#86efac"
     },
+
     gray: {
         fill: "#64748b",
         stroke: "#334155",
@@ -493,18 +766,22 @@ const PIECE_COLORS = {
 };
 
 const PAWN_DIRECTIONS = {
+
     red: {
         r: -1,
         c: 0
     },
+
     blue: {
         r: 0,
         c: 1
     },
+
     yellow: {
         r: 1,
         c: 0
     },
+
     green: {
         r: 0,
         c: -1
@@ -513,44 +790,68 @@ const PAWN_DIRECTIONS = {
 
 /* =========================================================
    USER ID
-   Persistent across refreshes.
-   ========================================================= */
+========================================================= */
 
-function getPersistentUserId() {
-    const key = "fourPlayerChessUserId";
+function getUserId() {
+
+    const key =
+        "fourPlayerChessUserId";
 
     try {
-        let id = localStorage.getItem(key);
+
+        let id =
+            localStorage.getItem(key);
 
         if (!id) {
-            id = "user_" + Math.random().toString(36).substring(2, 11);
-            localStorage.setItem(key, id);
+
+            id =
+                "user_" +
+                Math.random()
+                    .toString(36)
+                    .substring(2, 11);
+
+            localStorage.setItem(
+                key,
+                id
+            );
         }
 
         return id;
-    } catch (error) {
-        return "user_" + Math.random().toString(36).substring(2, 11);
+
+    } catch {
+
+        return (
+            "user_" +
+            Math.random()
+                .toString(36)
+                .substring(2, 11)
+        );
     }
 }
 
-const userId = getPersistentUserId();
+const userId =
+    getUserId();
 
 /* =========================================================
-   LOCAL STATE
-   ========================================================= */
+   STATE
+========================================================= */
 
 let roomCode = null;
 let roomRef = null;
 let roomListener = null;
 
 let botTimer = null;
-let botLockAttempt = false;
 
-let isCreatingRoom = false;
-let isJoiningRoom = false;
+let creatingRoom = false;
+let joiningRoom = false;
 
 let localState = {
-    board: createEmptyBoard(),
+
+    board:
+        Array.from(
+            { length: BOARD_SIZE },
+            () => Array(BOARD_SIZE).fill(null)
+        ),
 
     currentPlayerIdx: 0,
 
@@ -576,37 +877,75 @@ let localState = {
     },
 
     selectedSquare: null,
+
     validMoves: [],
+
     lastMove: null,
 
     boardRotation: 0,
 
-    mySeat: null
+    mySeat: null,
+
+    manualRotation: false
 };
 
 /* =========================================================
    DOM
-   ========================================================= */
+========================================================= */
 
-const boardEl = document.getElementById("board");
-const lobbyModal = document.getElementById("lobby-modal");
-const lobbyStatus = document.getElementById("lobby-status");
-const roomBadge = document.getElementById("room-badge");
-const roleIndicator = document.getElementById("role-indicator");
-const roomInput = document.getElementById("input-room-code");
+const boardEl =
+    document.getElementById("board");
 
-function setLobbyStatus(message, error = false) {
-    lobbyStatus.textContent = message;
-    lobbyStatus.className =
-        "text-xs min-h-[18px] " +
-        (error ? "text-red-400" : "text-slate-400");
-}
+const lobbyModal =
+    document.getElementById("lobby-modal");
+
+const lobbyMain =
+    document.getElementById("lobby-main");
+
+const botSelection =
+    document.getElementById("bot-selection");
+
+const lobbyStatus =
+    document.getElementById("lobby-status");
+
+const roomInput =
+    document.getElementById(
+        "input-room-code"
+    );
+
+const roomBadge =
+    document.getElementById(
+        "room-badge"
+    );
+
+const roleIndicator =
+    document.getElementById(
+        "role-indicator"
+    );
 
 /* =========================================================
-   BOARD
-   ========================================================= */
+   HELPERS
+========================================================= */
 
-function createEmptyBoard() {
+function setStatus(
+    text,
+    error = false
+) {
+
+    lobbyStatus.textContent =
+        text;
+
+    lobbyStatus.className =
+        "text-xs min-h-[18px] mt-3 " +
+        (
+            error
+                ? "text-red-400"
+                : "text-slate-400"
+        );
+}
+
+function emptyBoard() {
+
     return Array.from(
         { length: BOARD_SIZE },
         () => Array(BOARD_SIZE).fill(null)
@@ -614,6 +953,7 @@ function createEmptyBoard() {
 }
 
 function isValidSquare(r, c) {
+
     if (
         r < 0 ||
         r >= BOARD_SIZE ||
@@ -637,80 +977,145 @@ function isValidSquare(r, c) {
 }
 
 /* =========================================================
-   PIECE SVG
-   ========================================================= */
+   PIECES
+========================================================= */
 
-function getPieceSVG(type, colorKey) {
+function getPieceSVG(
+    type,
+    colorKey
+) {
+
     const colors =
         PIECE_COLORS[colorKey] ||
         PIECE_COLORS.gray;
 
-    const stroke = colors.stroke;
-    const fill = colors.fill;
-    const accent = colors.accent;
+    const fill =
+        colors.fill;
 
-    const paths = {
+    const stroke =
+        colors.stroke;
+
+    const accent =
+        colors.accent;
+
+    const pieces = {
+
         p: `
-            <path d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <circle cx="16" cy="7" r="4"
-                fill="${accent}" stroke="${stroke}" stroke-width="1.5"/>
-            <path d="M9 28L23 28L21 31L11 31Z"
-                fill="${stroke}"/>
+        <path
+            d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <circle
+            cx="16"
+            cy="7"
+            r="4"
+            fill="${accent}"
+            stroke="${stroke}"
+            stroke-width="1.5"/>
+
+        <path
+            d="M9 28L23 28L21 31L11 31Z"
+            fill="${stroke}"/>
         `,
 
         r: `
-            <path d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <rect x="8" y="27" width="16" height="4" rx="1"
-                fill="${stroke}"/>
+        <path
+            d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <rect
+            x="8"
+            y="27"
+            width="16"
+            height="4"
+            rx="1"
+            fill="${stroke}"/>
         `,
 
         n: `
-            <path d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <circle cx="12" cy="11" r="1.5"
-                fill="${accent}"/>
+        <path
+            d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <circle
+            cx="12"
+            cy="11"
+            r="1.5"
+            fill="${accent}"/>
         `,
 
         b: `
-            <path d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <circle cx="16" cy="6" r="2.5"
-                fill="${accent}" stroke="${stroke}" stroke-width="1"/>
+        <path
+            d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <circle
+            cx="16"
+            cy="6"
+            r="2.5"
+            fill="${accent}"
+            stroke="${stroke}"
+            stroke-width="1"/>
         `,
 
         q: `
-            <path d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <circle cx="16" cy="9" r="2"
-                fill="${accent}"/>
+        <path
+            d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <circle
+            cx="16"
+            cy="9"
+            r="2"
+            fill="${accent}"/>
         `,
 
         k: `
-            <path d="M8 29L24 29L22 17L16 14L10 17Z"
-                fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <line x1="16" y1="6" x2="16" y2="13"
-                stroke="${accent}" stroke-width="2.5"/>
+        <path
+            d="M8 29L24 29L22 17L16 14L10 17Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2"/>
+
+        <line
+            x1="16"
+            y1="6"
+            x2="16"
+            y2="13"
+            stroke="${accent}"
+            stroke-width="2.5"/>
         `
     };
 
     return `
         <svg
             viewBox="0 0 32 32"
-            class="piece-svg"
-            aria-hidden="true">
-            ${paths[type] || ""}
+            class="piece-svg">
+
+            ${pieces[type] || ""}
+
         </svg>
     `;
 }
 
 /* =========================================================
-   INITIAL POSITION
-   ========================================================= */
+   INITIAL BOARD
+========================================================= */
 
 function buildInitialBoard() {
-    const board = createEmptyBoard();
+
+    const board =
+        emptyBoard();
 
     const backline = [
         "r",
@@ -723,30 +1128,62 @@ function buildInitialBoard() {
         "r"
     ];
 
-    const pawns = Array(8).fill("p");
+    const pawns =
+        Array(8).fill("p");
 
-    function placeRow(row, startCol, pieces, player) {
-        pieces.forEach((piece, index) => {
-            board[row][startCol + index] = {
-                type: piece,
-                player,
-                moved: false
-            };
-        });
+    function placeRow(
+        row,
+        start,
+        pieces,
+        player
+    ) {
+
+        pieces.forEach(
+            (type, i) => {
+
+                board[row][start + i] = {
+                    type,
+                    player,
+                    moved: false
+                };
+
+            }
+        );
     }
 
-    function placeCol(col, startRow, pieces, player) {
-        pieces.forEach((piece, index) => {
-            board[startRow + index][col] = {
-                type: piece,
-                player,
-                moved: false
-            };
-        });
+    function placeCol(
+        col,
+        start,
+        pieces,
+        player
+    ) {
+
+        pieces.forEach(
+            (type, i) => {
+
+                board[start + i][col] = {
+                    type,
+                    player,
+                    moved: false
+                };
+
+            }
+        );
     }
 
-    placeRow(13, 3, backline, "red");
-    placeRow(12, 3, pawns, "red");
+    placeRow(
+        13,
+        3,
+        backline,
+        "red"
+    );
+
+    placeRow(
+        12,
+        3,
+        pawns,
+        "red"
+    );
 
     placeRow(
         0,
@@ -794,38 +1231,55 @@ function buildInitialBoard() {
 }
 
 /* =========================================================
-   RENDER BOARD
-   ========================================================= */
+   RENDER
+========================================================= */
 
 function renderBoard() {
+
     boardEl.innerHTML = "";
 
     boardEl.style.transform =
         `rotate(${localState.boardRotation}deg)`;
 
-    for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
+    for (
+        let r = 0;
+        r < BOARD_SIZE;
+        r++
+    ) {
 
-            const square = document.createElement("div");
+        for (
+            let c = 0;
+            c < BOARD_SIZE;
+            c++
+        ) {
 
-            square.dataset.row = String(r);
-            square.dataset.col = String(c);
+            const square =
+                document.createElement("div");
 
-            if (!isValidSquare(r, c)) {
+            square.dataset.row = r;
+            square.dataset.col = c;
+
+            if (
+                !isValidSquare(r, c)
+            ) {
+
                 square.className =
                     "square square-out-of-bounds";
-                boardEl.appendChild(square);
+
+                boardEl.appendChild(
+                    square
+                );
+
                 continue;
             }
 
-            const light =
-                (r + c) % 2 === 0;
-
             square.className =
                 "square " +
-                (light
-                    ? "square-light"
-                    : "square-dark");
+                (
+                    (r + c) % 2 === 0
+                        ? "square-light"
+                        : "square-dark"
+                );
 
             if (
                 localState.selectedSquare &&
@@ -850,37 +1304,46 @@ function renderBoard() {
                     )
                 )
             ) {
+
                 square.classList.add(
                     "square-last-move"
                 );
             }
 
-            const target = localState.validMoves.some(
-                move =>
-                    move.r === r &&
-                    move.c === c
-            );
+            const target =
+                localState.validMoves.some(
+                    m =>
+                        m.r === r &&
+                        m.c === c
+                );
 
             if (target) {
-                const targetPiece =
-                    localState.board[r][c];
 
-                if (targetPiece) {
+                if (
+                    localState.board[r][c]
+                ) {
+
                     const ring =
                         document.createElement("div");
 
                     ring.className =
                         "capture-ring";
 
-                    square.appendChild(ring);
+                    square.appendChild(
+                        ring
+                    );
+
                 } else {
+
                     const dot =
                         document.createElement("div");
 
                     dot.className =
                         "move-dot";
 
-                    square.appendChild(dot);
+                    square.appendChild(
+                        dot
+                    );
                 }
             }
 
@@ -888,6 +1351,7 @@ function renderBoard() {
                 localState.board[r][c];
 
             if (piece) {
+
                 const wrapper =
                     document.createElement("div");
 
@@ -903,19 +1367,30 @@ function renderBoard() {
                         piece.player
                     );
 
-                square.appendChild(wrapper);
+                square.appendChild(
+                    wrapper
+                );
             }
 
             square.addEventListener(
                 "pointerup",
                 event => {
+
                     event.preventDefault();
-                    handleSquareClick(r, c);
+
+                    handleSquareClick(
+                        r,
+                        c
+                    );
                 },
-                { passive: false }
+                {
+                    passive: false
+                }
             );
 
-            boardEl.appendChild(square);
+            boardEl.appendChild(
+                square
+            );
         }
     }
 
@@ -923,33 +1398,49 @@ function renderBoard() {
 }
 
 /* =========================================================
-   INPUT / MOVEMENT
-   ========================================================= */
+   PLAYER MOVE
+========================================================= */
 
-function handleSquareClick(r, c) {
-    const activePlayer =
-        PLAYERS[localState.currentPlayerIdx];
+function handleSquareClick(
+    r,
+    c
+) {
 
-    if (localState.mySeat !== activePlayer) {
-        return;
-    }
+    const active =
+        PLAYERS[
+            localState.currentPlayerIdx
+        ];
 
     if (
-        localState.eliminated[activePlayer]
+        localState.mySeat !== active
     ) {
         return;
     }
 
-    if (localState.selectedSquare) {
+    if (
+        localState.bots[active]
+    ) {
+        return;
+    }
 
-        const selectedMove =
+    if (
+        localState.eliminated[active]
+    ) {
+        return;
+    }
+
+    if (
+        localState.selectedSquare
+    ) {
+
+        const move =
             localState.validMoves.find(
-                move =>
-                    move.r === r &&
-                    move.c === c
+                m =>
+                    m.r === r &&
+                    m.c === c
             );
 
-        if (selectedMove) {
+        if (move) {
 
             const from = {
                 r: localState.selectedSquare.r,
@@ -961,12 +1452,19 @@ function handleSquareClick(r, c) {
                 c
             };
 
-            localState.selectedSquare = null;
-            localState.validMoves = [];
+            localState.selectedSquare =
+                null;
+
+            localState.validMoves =
+                [];
 
             renderBoard();
 
-            dispatchMove(from, to);
+            dispatchMove(
+                from,
+                to
+            );
+
             return;
         }
     }
@@ -976,19 +1474,27 @@ function handleSquareClick(r, c) {
 
     if (
         piece &&
-        piece.player === activePlayer
+        piece.player === active
     ) {
+
         localState.selectedSquare = {
             r,
             c
         };
 
         localState.validMoves =
-            getValidMovesForPiece(r, c);
+            getValidMovesForPiece(
+                r,
+                c
+            );
 
     } else {
-        localState.selectedSquare = null;
-        localState.validMoves = [];
+
+        localState.selectedSquare =
+            null;
+
+        localState.validMoves =
+            [];
     }
 
     renderBoard();
@@ -996,11 +1502,28 @@ function handleSquareClick(r, c) {
 
 /* =========================================================
    MOVE VALIDATION
-   ========================================================= */
+========================================================= */
 
-function getValidMovesForPiece(r, c) {
+function getValidMovesForPiece(
+    r,
+    c
+) {
+
+    return getMoves(
+        localState.board,
+        r,
+        c
+    );
+}
+
+function getMoves(
+    board,
+    r,
+    c
+) {
+
     const piece =
-        localState.board[r][c];
+        board?.[r]?.[c];
 
     if (!piece) {
         return [];
@@ -1008,229 +1531,258 @@ function getValidMovesForPiece(r, c) {
 
     const moves = [];
 
-    switch (piece.type) {
+    function valid(
+        row,
+        col
+    ) {
 
-        case "p": {
-            const dir =
-                PAWN_DIRECTIONS[piece.player];
+        return isValidSquare(
+            row,
+            col
+        );
+    }
 
-            if (!dir) {
-                return [];
-            }
+    function add(
+        row,
+        col
+    ) {
 
-            const fr = r + dir.r;
-            const fc = c + dir.c;
-
-            if (
-                isValidSquare(fr, fc) &&
-                !localState.board[fr][fc]
-            ) {
-                moves.push({
-                    r: fr,
-                    c: fc
-                });
-
-                if (!piece.moved) {
-                    const f2r =
-                        r + dir.r * 2;
-
-                    const f2c =
-                        c + dir.c * 2;
-
-                    if (
-                        isValidSquare(f2r, f2c) &&
-                        !localState.board[f2r][f2c]
-                    ) {
-                        moves.push({
-                            r: f2r,
-                            c: f2c
-                        });
-                    }
-                }
-            }
-
-            const captureOffsets =
-                dir.r !== 0
-                    ? [
-                        { r: dir.r, c: -1 },
-                        { r: dir.r, c: 1 }
-                    ]
-                    : [
-                        { r: -1, c: dir.c },
-                        { r: 1, c: dir.c }
-                    ];
-
-            for (const offset of captureOffsets) {
-
-                const cr =
-                    r + offset.r;
-
-                const cc =
-                    c + offset.c;
-
-                if (!isValidSquare(cr, cc)) {
-                    continue;
-                }
-
-                const target =
-                    localState.board[cr][cc];
-
-                if (
-                    target &&
-                    target.player !== piece.player &&
-                    target.player !== "gray"
-                ) {
-                    moves.push({
-                        r: cr,
-                        c: cc
-                    });
-                }
-            }
-
-            break;
+        if (!valid(row, col)) {
+            return;
         }
 
-        case "n": {
-            const offsets = [
-                [-2, -1],
-                [-2, 1],
-                [-1, -2],
-                [-1, 2],
-                [1, -2],
-                [1, 2],
-                [2, -1],
-                [2, 1]
-            ];
+        const target =
+            board[row][col];
 
-            for (const [dr, dc] of offsets) {
+        if (
+            !target ||
+            target.player !== piece.player
+        ) {
 
-                const nr = r + dr;
-                const nc = c + dc;
-
-                if (!isValidSquare(nr, nc)) {
-                    continue;
-                }
-
-                const target =
-                    localState.board[nr][nc];
-
-                if (
-                    !target ||
-                    target.player !== piece.player
-                ) {
-                    moves.push({
-                        r: nr,
-                        c: nc
-                    });
-                }
-            }
-
-            break;
-        }
-
-        case "b":
-            return getRayMoves(
-                r,
-                c,
-                piece,
-                [
-                    [1, 1],
-                    [1, -1],
-                    [-1, 1],
-                    [-1, -1]
-                ]
-            );
-
-        case "r":
-            return getRayMoves(
-                r,
-                c,
-                piece,
-                [
-                    [1, 0],
-                    [-1, 0],
-                    [0, 1],
-                    [0, -1]
-                ]
-            );
-
-        case "q":
-            return getRayMoves(
-                r,
-                c,
-                piece,
-                [
-                    [1, 1],
-                    [1, -1],
-                    [-1, 1],
-                    [-1, -1],
-                    [1, 0],
-                    [-1, 0],
-                    [0, 1],
-                    [0, -1]
-                ]
-            );
-
-        case "k": {
-
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let dc = -1; dc <= 1; dc++) {
-
-                    if (
-                        dr === 0 &&
-                        dc === 0
-                    ) {
-                        continue;
-                    }
-
-                    const nr = r + dr;
-                    const nc = c + dc;
-
-                    if (!isValidSquare(nr, nc)) {
-                        continue;
-                    }
-
-                    const target =
-                        localState.board[nr][nc];
-
-                    if (
-                        !target ||
-                        target.player !== piece.player
-                    ) {
-                        moves.push({
-                            r: nr,
-                            c: nc
-                        });
-                    }
-                }
-            }
-
-            break;
+            moves.push({
+                r: row,
+                c: col
+            });
         }
     }
 
-    return moves;
-}
+    if (
+        piece.type === "p"
+    ) {
 
-function getRayMoves(
-    r,
-    c,
-    piece,
-    directions
-) {
-    const moves = [];
+        const dir =
+            PAWN_DIRECTIONS[
+                piece.player
+            ];
 
-    for (const [dr, dc] of directions) {
+        if (!dir) {
+            return [];
+        }
 
-        let nr = r + dr;
-        let nc = c + dc;
+        const nr =
+            r + dir.r;
+
+        const nc =
+            c + dir.c;
+
+        if (
+            valid(nr, nc) &&
+            !board[nr][nc]
+        ) {
+
+            moves.push({
+                r: nr,
+                c: nc
+            });
+
+            if (!piece.moved) {
+
+                const nr2 =
+                    r + dir.r * 2;
+
+                const nc2 =
+                    c + dir.c * 2;
+
+                if (
+                    valid(nr2, nc2) &&
+                    !board[nr2][nc2]
+                ) {
+
+                    moves.push({
+                        r: nr2,
+                        c: nc2
+                    });
+                }
+            }
+        }
+
+        const captures =
+            dir.r !== 0
+                ? [
+                    [dir.r, -1],
+                    [dir.r, 1]
+                ]
+                : [
+                    [-1, dir.c],
+                    [1, dir.c]
+                ];
+
+        for (
+            const [dr, dc]
+            of captures
+        ) {
+
+            const cr =
+                r + dr;
+
+            const cc =
+                c + dc;
+
+            if (
+                !valid(cr, cc)
+            ) {
+                continue;
+            }
+
+            const target =
+                board[cr][cc];
+
+            if (
+                target &&
+                target.player !== piece.player &&
+                target.player !== "gray"
+            ) {
+
+                moves.push({
+                    r: cr,
+                    c: cc
+                });
+            }
+        }
+
+        return moves;
+    }
+
+    if (
+        piece.type === "n"
+    ) {
+
+        const offsets = [
+            [-2,-1],
+            [-2,1],
+            [-1,-2],
+            [-1,2],
+            [1,-2],
+            [1,2],
+            [2,-1],
+            [2,1]
+        ];
+
+        offsets.forEach(
+            ([dr, dc]) => {
+
+                add(
+                    r + dr,
+                    c + dc
+                );
+            }
+        );
+
+        return moves;
+    }
+
+    if (
+        piece.type === "k"
+    ) {
+
+        for (
+            let dr = -1;
+            dr <= 1;
+            dr++
+        ) {
+
+            for (
+                let dc = -1;
+                dc <= 1;
+                dc++
+            ) {
+
+                if (
+                    dr === 0 &&
+                    dc === 0
+                ) {
+                    continue;
+                }
+
+                add(
+                    r + dr,
+                    c + dc
+                );
+            }
+        }
+
+        return moves;
+    }
+
+    let directions = [];
+
+    if (
+        piece.type === "b"
+    ) {
+
+        directions = [
+            [1,1],
+            [1,-1],
+            [-1,1],
+            [-1,-1]
+        ];
+    }
+
+    if (
+        piece.type === "r"
+    ) {
+
+        directions = [
+            [1,0],
+            [-1,0],
+            [0,1],
+            [0,-1]
+        ];
+    }
+
+    if (
+        piece.type === "q"
+    ) {
+
+        directions = [
+            [1,1],
+            [1,-1],
+            [-1,1],
+            [-1,-1],
+            [1,0],
+            [-1,0],
+            [0,1],
+            [0,-1]
+        ];
+    }
+
+    for (
+        const [dr, dc]
+        of directions
+    ) {
+
+        let nr =
+            r + dr;
+
+        let nc =
+            c + dc;
 
         while (
-            isValidSquare(nr, nc)
+            valid(nr, nc)
         ) {
 
             const target =
-                localState.board[nr][nc];
+                board[nr][nc];
 
             if (!target) {
 
@@ -1242,8 +1794,10 @@ function getRayMoves(
             } else {
 
                 if (
-                    target.player !== piece.player
+                    target.player !==
+                    piece.player
                 ) {
+
                     moves.push({
                         r: nr,
                         c: nc
@@ -1262,64 +1816,87 @@ function getRayMoves(
 }
 
 /* =========================================================
-   FIREBASE MOVE TRANSACTION
-   ========================================================= */
+   DISPATCH MOVE
+========================================================= */
 
-async function dispatchMove(from, to) {
+async function dispatchMove(
+    from,
+    to
+) {
 
     if (!roomRef) {
-        return;
-    }
-
-    const expectedPlayer =
-        PLAYERS[localState.currentPlayerIdx];
-
-    if (localState.mySeat !== expectedPlayer) {
         return;
     }
 
     try {
 
         await roomRef.transaction(
-            currentData => {
+            data => {
 
-                if (!currentData) {
+                if (!data) {
                     return;
                 }
 
                 let board;
 
                 try {
+
                     board =
                         JSON.parse(
-                            currentData.boardStr
+                            data.boardStr
                         );
+
                 } catch {
+
                     return;
                 }
 
                 const currentIdx =
                     Number(
-                        currentData.currentPlayerIdx
+                        data.currentPlayerIdx
                     );
 
-                const currentPlayer =
-                    PLAYERS[currentIdx];
+                const player =
+                    PLAYERS[
+                        currentIdx
+                    ];
 
                 const seats =
-                    currentData.seats || {};
+                    data.seats || {};
+
+                const bots =
+                    data.bots || {};
 
                 const eliminated =
-                    currentData.eliminated || {};
+                    data.eliminated || {};
+
+                /*
+                 * HUMAN MOVE:
+                 *
+                 * The current seat must belong
+                 * to this browser.
+                 *
+                 * BOT MOVE:
+                 *
+                 * The creator (Red) controls all
+                 * bot players.
+                 */
+                const isHumanMove =
+                    seats[player] === userId;
+
+                const isBotMove =
+                    bots[player] === true &&
+                    seats.red === userId;
 
                 if (
-                    seats[currentPlayer] !== userId
+                    !isHumanMove &&
+                    !isBotMove
                 ) {
                     return;
                 }
 
                 if (
-                    eliminated[currentPlayer]
+                    eliminated[player]
                 ) {
                     return;
                 }
@@ -1332,26 +1909,13 @@ async function dispatchMove(from, to) {
                 }
 
                 if (
-                    piece.player !== currentPlayer
-                ) {
-                    return;
-                }
-
-                if (
-                    !isValidSquare(
-                        from.r,
-                        from.c
-                    ) ||
-                    !isValidSquare(
-                        to.r,
-                        to.c
-                    )
+                    piece.player !== player
                 ) {
                     return;
                 }
 
                 const legalMoves =
-                    getValidMovesFromBoard(
+                    getMoves(
                         board,
                         from.r,
                         from.c
@@ -1376,7 +1940,8 @@ async function dispatchMove(from, to) {
                     moved: true
                 };
 
-                board[from.r][from.c] = null;
+                board[from.r][from.c] =
+                    null;
 
                 const nextEliminated = {
                     red: false,
@@ -1385,6 +1950,10 @@ async function dispatchMove(from, to) {
                     green: false,
                     ...eliminated
                 };
+
+                /*
+                 * Capture king = elimination.
+                 */
 
                 if (
                     target &&
@@ -1401,21 +1970,21 @@ async function dispatchMove(from, to) {
                         r < BOARD_SIZE;
                         r++
                     ) {
+
                         for (
                             let c = 0;
                             c < BOARD_SIZE;
                             c++
                         ) {
 
-                            const p =
-                                board[r][c];
-
                             if (
-                                p &&
-                                p.player === target.player
+                                board[r][c] &&
+                                board[r][c].player ===
+                                target.player
                             ) {
+
                                 board[r][c] = {
-                                    ...p,
+                                    ...board[r][c],
                                     player: "gray"
                                 };
                             }
@@ -1423,13 +1992,23 @@ async function dispatchMove(from, to) {
                     }
                 }
 
+                /*
+                 * Find next living player.
+                 */
+
                 let nextIdx =
                     currentIdx;
 
-                for (let i = 0; i < 4; i++) {
+                for (
+                    let i = 0;
+                    i < PLAYERS.length;
+                    i++
+                ) {
 
                     nextIdx =
-                        (nextIdx + 1) %
+                        (
+                            nextIdx + 1
+                        ) %
                         PLAYERS.length;
 
                     if (
@@ -1442,10 +2021,13 @@ async function dispatchMove(from, to) {
                 }
 
                 return {
-                    ...currentData,
+
+                    ...data,
 
                     boardStr:
-                        JSON.stringify(board),
+                        JSON.stringify(
+                            board
+                        ),
 
                     currentPlayerIdx:
                         nextIdx,
@@ -1456,388 +2038,91 @@ async function dispatchMove(from, to) {
                     lastMove: {
                         from,
                         to,
-                        player: currentPlayer,
+                        player,
                         timestamp:
-                            firebase.database.ServerValue.TIMESTAMP
+                            firebase.database
+                                .ServerValue
+                                .TIMESTAMP
                     }
+
                 };
             }
         );
 
     } catch (error) {
+
         console.error(
-            "Move transaction failed:",
+            "Move failed:",
             error
         );
     }
 }
 
 /* =========================================================
-   BOARD-BASED MOVE VALIDATION
-   Used inside Firebase transactions.
-   ========================================================= */
+   BOT ENGINE
+========================================================= */
 
-function getValidMovesFromBoard(
-    board,
-    r,
-    c
-) {
-    const piece =
-        board?.[r]?.[c];
+/*
+ * Only the RED/host client runs bots.
+ *
+ * This is much safer than having all four clients
+ * independently run the same bot.
+ */
 
-    if (!piece) {
-        return [];
-    }
-
-    const moves = [];
-
-    function validSquare(row, col) {
-        return isValidSquare(row, col);
-    }
-
-    function addIfValid(row, col) {
-
-        if (!validSquare(row, col)) {
-            return;
-        }
-
-        const target =
-            board[row][col];
-
-        if (
-            !target ||
-            target.player !== piece.player
-        ) {
-            moves.push({
-                r: row,
-                c: col
-            });
-        }
-    }
-
-    if (piece.type === "p") {
-
-        const dir =
-            PAWN_DIRECTIONS[piece.player];
-
-        if (!dir) {
-            return [];
-        }
-
-        const fr = r + dir.r;
-        const fc = c + dir.c;
-
-        if (
-            validSquare(fr, fc) &&
-            !board[fr][fc]
-        ) {
-
-            moves.push({
-                r: fr,
-                c: fc
-            });
-
-            if (!piece.moved) {
-
-                const f2r =
-                    r + dir.r * 2;
-
-                const f2c =
-                    c + dir.c * 2;
-
-                if (
-                    validSquare(f2r, f2c) &&
-                    !board[f2r][f2c]
-                ) {
-                    moves.push({
-                        r: f2r,
-                        c: f2c
-                    });
-                }
-            }
-        }
-
-        const offsets =
-            dir.r !== 0
-                ? [
-                    [dir.r, -1],
-                    [dir.r, 1]
-                ]
-                : [
-                    [-1, dir.c],
-                    [1, dir.c]
-                ];
-
-        for (const [dr, dc] of offsets) {
-
-            const nr = r + dr;
-            const nc = c + dc;
-
-            if (!validSquare(nr, nc)) {
-                continue;
-            }
-
-            const target =
-                board[nr][nc];
-
-            if (
-                target &&
-                target.player !== piece.player &&
-                target.player !== "gray"
-            ) {
-                moves.push({
-                    r: nr,
-                    c: nc
-                });
-            }
-        }
-
-        return moves;
-    }
-
-    if (piece.type === "n") {
-
-        const offsets = [
-            [-2, -1],
-            [-2, 1],
-            [-1, -2],
-            [-1, 2],
-            [1, -2],
-            [1, 2],
-            [2, -1],
-            [2, 1]
-        ];
-
-        for (const [dr, dc] of offsets) {
-            addIfValid(
-                r + dr,
-                c + dc
-            );
-        }
-
-        return moves;
-    }
-
-    let directions = [];
-
-    if (piece.type === "b") {
-        directions = [
-            [1, 1],
-            [1, -1],
-            [-1, 1],
-            [-1, -1]
-        ];
-    }
-
-    if (piece.type === "r") {
-        directions = [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1]
-        ];
-    }
-
-    if (piece.type === "q") {
-        directions = [
-            [1, 1],
-            [1, -1],
-            [-1, 1],
-            [-1, -1],
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1]
-        ];
-    }
-
-    if (piece.type === "k") {
-        for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-
-                if (
-                    dr === 0 &&
-                    dc === 0
-                ) {
-                    continue;
-                }
-
-                addIfValid(
-                    r + dr,
-                    c + dc
-                );
-            }
-        }
-
-        return moves;
-    }
-
-    for (const [dr, dc] of directions) {
-
-        let nr = r + dr;
-        let nc = c + dc;
-
-        while (
-            validSquare(nr, nc)
-        ) {
-
-            const target =
-                board[nr][nc];
-
-            if (!target) {
-
-                moves.push({
-                    r: nr,
-                    c: nc
-                });
-
-            } else {
-
-                if (
-                    target.player !== piece.player
-                ) {
-                    moves.push({
-                        r: nr,
-                        c: nc
-                    });
-                }
-
-                break;
-            }
-
-            nr += dr;
-            nc += dc;
-        }
-    }
-
-    return moves;
-}
-
-/* =========================================================
-   BOT SYSTEM
-   ========================================================= */
-
-function scheduleBotCheck() {
+function scheduleBot() {
 
     if (botTimer) {
         clearTimeout(botTimer);
-        botTimer = null;
     }
 
-    botTimer = setTimeout(
-        triggerBotIfNeeded,
-        500
-    );
+    botTimer =
+        setTimeout(
+            runBotIfNeeded,
+            700
+        );
 }
 
-async function triggerBotIfNeeded() {
+async function runBotIfNeeded() {
 
     if (!roomRef) {
         return;
     }
 
-    const activePlayer =
+    /*
+     * Only the room creator / Red player
+     * controls bots.
+     */
+    if (
+        localState.seats.red !== userId
+    ) {
+        return;
+    }
+
+    const player =
         PLAYERS[
             localState.currentPlayerIdx
         ];
 
     if (
-        !localState.bots[activePlayer]
+        !localState.bots[player]
     ) {
         return;
     }
 
     if (
-        localState.eliminated[activePlayer]
+        localState.eliminated[player]
     ) {
         return;
     }
 
-    if (botLockAttempt) {
-        return;
-    }
-
-    botLockAttempt = true;
-
-    const lockRef =
-        roomRef.child(
-            "botLocks/" + activePlayer
-        );
-
-    try {
-
-        const result =
-            await lockRef.transaction(
-                current => {
-
-                    const now =
-                        Date.now();
-
-                    if (
-                        current &&
-                        current.expiresAt &&
-                        current.expiresAt > now
-                    ) {
-                        return;
-                    }
-
-                    return {
-                        userId,
-                        expiresAt:
-                            now + 5000
-                    };
-                }
-            );
-
-        if (
-            !result.committed ||
-            !result.snapshot.val() ||
-            result.snapshot.val().userId !== userId
-        ) {
-            botLockAttempt = false;
-            return;
-        }
-
-        await runBotTurn(activePlayer);
-
-        await lockRef.remove();
-
-    } catch (error) {
-
-        console.error(
-            "Bot error:",
-            error
-        );
-
-        try {
-            await lockRef.remove();
-        } catch {}
-    }
-
-    botLockAttempt = false;
-}
-
-async function runBotTurn(player) {
-
-    if (!roomRef) {
-        return;
-    }
-
-    if (
-        PLAYERS[
-            localState.currentPlayerIdx
-        ] !== player
-    ) {
-        return;
-    }
-
-    const allMoves = [];
+    const moves = [];
 
     for (
         let r = 0;
         r < BOARD_SIZE;
         r++
     ) {
+
         for (
             let c = 0;
             c < BOARD_SIZE;
@@ -1854,93 +2139,123 @@ async function runBotTurn(player) {
                 continue;
             }
 
-            const moves =
-                getValidMovesForPiece(
+            const legal =
+                getMoves(
+                    localState.board,
                     r,
                     c
                 );
 
-            for (const move of moves) {
-                allMoves.push({
-                    from: {
-                        r,
-                        c
-                    },
-                    to: move
-                });
-            }
+            legal.forEach(
+                move => {
+
+                    moves.push({
+                        from: {
+                            r,
+                            c
+                        },
+
+                        to: move
+                    });
+
+                }
+            );
         }
     }
 
-    if (!allMoves.length) {
+    if (!moves.length) {
         return;
     }
 
+    /*
+     * Prefer captures.
+     */
+
     const captures =
-        allMoves.filter(
+        moves.filter(
             move =>
                 localState.board[
                     move.to.r
                 ][
                     move.to.c
-                ]
+                ] !== null
         );
 
-    const options =
+    const choices =
         captures.length
             ? captures
-            : allMoves;
+            : moves;
 
     const chosen =
-        options[
+        choices[
             Math.floor(
                 Math.random() *
-                options.length
+                choices.length
             )
         ];
 
-    await dispatchMove(
-        chosen.from,
-        chosen.to
+    /*
+     * Small delay so bot moves
+     * look natural instead of instant.
+     */
+
+    setTimeout(
+        () => {
+
+            /*
+             * Make sure it is still this
+             * bot's turn.
+             */
+
+            if (
+                PLAYERS[
+                    localState.currentPlayerIdx
+                ] !== player
+            ) {
+                return;
+            }
+
+            dispatchMove(
+                chosen.from,
+                chosen.to
+            );
+
+        },
+        350
     );
 }
 
 /* =========================================================
-   SEAT CLAIMING
-   ========================================================= */
+   SEAT CLAIM
+========================================================= */
 
-async function claimSeat(seatColor) {
+async function claimSeat(
+    seat
+) {
 
     if (!roomRef) {
         return;
     }
 
+    /*
+     * A bot seat cannot be claimed.
+     */
+
     if (
-        !PLAYERS.includes(seatColor)
+        localState.bots[seat]
     ) {
         return;
     }
 
-    const seatRef =
+    const ref =
         roomRef.child(
-            "seats/" + seatColor
+            "seats/" + seat
         );
-
-    const button =
-        document.getElementById(
-            "seat-btn-" + seatColor
-        );
-
-    if (button) {
-        button.classList.add(
-            "disabled-button"
-        );
-    }
 
     try {
 
         const result =
-            await seatRef.transaction(
+            await ref.transaction(
                 current => {
 
                     if (
@@ -1957,29 +2272,29 @@ async function claimSeat(seatColor) {
         if (
             !result.committed
         ) {
-            if (button) {
-                button.classList.remove(
-                    "disabled-button"
-                );
-            }
-
             return;
         }
 
-        await roomRef.child(
-            "bots/" + seatColor
-        ).set(false);
+        await roomRef
+            .child(
+                "bots/" + seat
+            )
+            .set(false);
 
         localState.mySeat =
-            seatColor;
+            seat;
 
         localState.boardRotation =
-            SEAT_ROTATIONS[seatColor];
+            SEAT_ROTATIONS[seat];
+
+        localState.manualRotation =
+            false;
 
         localState.selectedSquare =
             null;
 
-        localState.validMoves = [];
+        localState.validMoves =
+            [];
 
         renderBoard();
 
@@ -1989,57 +2304,48 @@ async function claimSeat(seatColor) {
             "Seat claim failed:",
             error
         );
-
-        if (button) {
-            button.classList.remove(
-                "disabled-button"
-            );
-        }
     }
 }
 
-window.claimSeat = claimSeat;
-
 /* =========================================================
    ROOM CREATION
-   ========================================================= */
+========================================================= */
 
 function generateRoomCode() {
+
     return Math.random()
         .toString(36)
         .substring(2, 8)
         .toUpperCase();
 }
 
-async function createRoom() {
+async function createRoom(
+    botCount
+) {
 
-    if (
-        isCreatingRoom ||
-        isJoiningRoom
-    ) {
+    if (creatingRoom) {
         return;
     }
 
-    isCreatingRoom = true;
+    creatingRoom = true;
 
     const button =
         document.getElementById(
-            "btn-create-room"
+            "btn-confirm-create"
         );
 
     button.classList.add(
         "disabled-button"
     );
 
-    setLobbyStatus(
+    setStatus(
         "Creating room..."
     );
 
     try {
 
-        let code = null;
-        let reference = null;
         let created = false;
+        let code = null;
 
         for (
             let attempt = 0;
@@ -2050,29 +2356,68 @@ async function createRoom() {
             const candidate =
                 generateRoomCode();
 
-            const candidateRef =
+            const ref =
                 database.ref(
-                    "rooms/" + candidate
+                    "rooms/" +
+                    candidate
                 );
 
-            const snapshot =
-                await candidateRef.once(
+            const existing =
+                await ref.once(
                     "value"
                 );
 
             if (
-                snapshot.exists()
+                existing.exists()
             ) {
                 continue;
             }
 
-            const initialBoard =
-                buildInitialBoard();
+            /*
+             * Red is always the creator.
+             *
+             * Bots fill:
+             *
+             * 1 bot = Blue
+             * 2 bots = Blue + Yellow
+             * 3 bots = Blue + Yellow + Green
+             */
 
-            await candidateRef.set({
+            const seats = {
+                red: userId,
+                blue: null,
+                yellow: null,
+                green: null
+            };
+
+            const bots = {
+                red: false,
+                blue: false,
+                yellow: false,
+                green: false
+            };
+
+            for (
+                let i = 0;
+                i < botCount;
+                i++
+            ) {
+
+                const seat =
+                    BOT_SEATS[i];
+
+                seats[seat] =
+                    "BOT";
+
+                bots[seat] =
+                    true;
+            }
+
+            await ref.set({
+
                 boardStr:
                     JSON.stringify(
-                        initialBoard
+                        buildInitialBoard()
                     ),
 
                 currentPlayerIdx: 0,
@@ -2084,27 +2429,20 @@ async function createRoom() {
                     green: false
                 },
 
-                seats: {
-                    red: userId,
-                    blue: null,
-                    yellow: null,
-                    green: null
-                },
+                seats,
 
-                bots: {
-                    red: false,
-                    blue: false,
-                    yellow: false,
-                    green: false
-                },
+                bots,
 
-                lastMove: null,
+                lastMove: null
 
-                botLocks: {}
             });
 
-            code = candidate;
-            reference = candidateRef;
+            roomCode =
+                candidate;
+
+            roomRef =
+                ref;
+
             created = true;
 
             break;
@@ -2112,15 +2450,18 @@ async function createRoom() {
 
         if (!created) {
             throw new Error(
-                "Could not create a unique room."
+                "Could not create room."
             );
         }
 
-        roomCode = code;
-        roomRef = reference;
+        localState.mySeat =
+            "red";
 
-        localState.mySeat = "red";
-        localState.boardRotation = 0;
+        localState.boardRotation =
+            0;
+
+        localState.manualRotation =
+            false;
 
         roomBadge.textContent =
             "Room: " + roomCode;
@@ -2136,18 +2477,17 @@ async function createRoom() {
     } catch (error) {
 
         console.error(
-            "Room creation failed:",
             error
         );
 
-        setLobbyStatus(
-            "Could not create room. Try again.",
+        setStatus(
+            "Could not create room.",
             true
         );
 
     } finally {
 
-        isCreatingRoom = false;
+        creatingRoom = false;
 
         button.classList.remove(
             "disabled-button"
@@ -2156,15 +2496,12 @@ async function createRoom() {
 }
 
 /* =========================================================
-   JOIN ROOM
-   ========================================================= */
+   JOIN
+========================================================= */
 
 async function joinRoom() {
 
-    if (
-        isJoiningRoom ||
-        isCreatingRoom
-    ) {
+    if (joiningRoom) {
         return;
     }
 
@@ -2173,9 +2510,11 @@ async function joinRoom() {
             .trim()
             .toUpperCase();
 
-    if (!/^[A-Z0-9]{6}$/.test(code)) {
+    if (
+        !/^[A-Z0-9]{6}$/.test(code)
+    ) {
 
-        setLobbyStatus(
+        setStatus(
             "Enter a valid 6-character room code.",
             true
         );
@@ -2183,7 +2522,7 @@ async function joinRoom() {
         return;
     }
 
-    isJoiningRoom = true;
+    joiningRoom = true;
 
     const button =
         document.getElementById(
@@ -2194,25 +2533,27 @@ async function joinRoom() {
         "disabled-button"
     );
 
-    setLobbyStatus(
-        "Checking room..."
+    setStatus(
+        "Connecting..."
     );
 
     try {
 
-        const reference =
+        const ref =
             database.ref(
                 "rooms/" + code
             );
 
         const snapshot =
-            await reference.once(
+            await ref.once(
                 "value"
             );
 
-        if (!snapshot.exists()) {
+        if (
+            !snapshot.exists()
+        ) {
 
-            setLobbyStatus(
+            setStatus(
                 "Room not found.",
                 true
             );
@@ -2220,8 +2561,11 @@ async function joinRoom() {
             return;
         }
 
-        roomCode = code;
-        roomRef = reference;
+        roomCode =
+            code;
+
+        roomRef =
+            ref;
 
         roomBadge.textContent =
             "Room: " + code;
@@ -2230,23 +2574,24 @@ async function joinRoom() {
             "hidden"
         );
 
-        subscribeToRoom(code);
+        subscribeToRoom(
+            code
+        );
 
     } catch (error) {
 
         console.error(
-            "Join failed:",
             error
         );
 
-        setLobbyStatus(
+        setStatus(
             "Could not connect to room.",
             true
         );
 
     } finally {
 
-        isJoiningRoom = false;
+        joiningRoom = false;
 
         button.classList.remove(
             "disabled-button"
@@ -2255,15 +2600,18 @@ async function joinRoom() {
 }
 
 /* =========================================================
-   ROOM SUBSCRIPTION
-   ========================================================= */
+   SUBSCRIBE
+========================================================= */
 
-function subscribeToRoom(code) {
+function subscribeToRoom(
+    code
+) {
 
     if (
         roomListener &&
         roomRef
     ) {
+
         roomRef.off(
             "value",
             roomListener
@@ -2285,41 +2633,27 @@ function subscribeToRoom(code) {
                 return;
             }
 
-            let parsedBoard;
+            let board;
 
             try {
 
-                parsedBoard =
+                board =
                     JSON.parse(
                         data.boardStr
                     );
 
-            } catch (error) {
+            } catch {
 
-                console.error(
-                    "Invalid board data:",
-                    error
-                );
-
-                return;
-            }
-
-            if (
-                !Array.isArray(parsedBoard) ||
-                parsedBoard.length !== BOARD_SIZE
-            ) {
                 return;
             }
 
             localState.board =
-                parsedBoard;
+                board;
 
             localState.currentPlayerIdx =
-                Number.isInteger(
-                    data.currentPlayerIdx
-                )
-                    ? data.currentPlayerIdx
-                    : 0;
+                Number(
+                    data.currentPlayerIdx || 0
+                );
 
             localState.eliminated = {
                 red: false,
@@ -2348,49 +2682,64 @@ function subscribeToRoom(code) {
             localState.lastMove =
                 data.lastMove || null;
 
-            const foundSeat =
+            const mySeat =
                 PLAYERS.find(
                     seat =>
                         localState.seats[seat] ===
                         userId
                 );
 
-            if (foundSeat) {
-
-                if (
-                    localState.mySeat !==
-                    foundSeat
-                ) {
-                    localState.selectedSquare =
-                        null;
-
-                    localState.validMoves =
-                        [];
-                }
+            if (mySeat) {
 
                 localState.mySeat =
-                    foundSeat;
+                    mySeat;
 
-                /*
-                 * Do not overwrite manual rotation
-                 * every time Firebase sends an update.
-                 */
                 if (
-                    !localState._manualRotation
+                    !localState.manualRotation
                 ) {
+
                     localState.boardRotation =
                         SEAT_ROTATIONS[
-                            foundSeat
+                            mySeat
                         ];
                 }
 
             } else {
-                localState.mySeat = null;
+
+                localState.mySeat =
+                    null;
+            }
+
+            /*
+             * Clear selection when it is no longer
+             * our turn.
+             */
+
+            const active =
+                PLAYERS[
+                    localState.currentPlayerIdx
+                ];
+
+            if (
+                localState.mySeat !== active
+            ) {
+
+                localState.selectedSquare =
+                    null;
+
+                localState.validMoves =
+                    [];
             }
 
             renderBoard();
 
-            scheduleBotCheck();
+            /*
+             * This is what actually makes bots work.
+             *
+             * Only Red/creator runs the bot.
+             */
+
+            scheduleBot();
         };
 
     roomRef.on(
@@ -2400,26 +2749,150 @@ function subscribeToRoom(code) {
 }
 
 /* =========================================================
-   BUTTONS
-   ========================================================= */
+   CREATE SCREEN
+========================================================= */
 
 document
-    .getElementById("btn-create-room")
+    .getElementById(
+        "btn-create-room"
+    )
     .addEventListener(
         "click",
-        createRoom
+        () => {
+
+            lobbyMain.classList.add(
+                "hidden"
+            );
+
+            botSelection.classList.remove(
+                "hidden"
+            );
+
+            setStatus("");
+        }
     );
 
 document
-    .getElementById("btn-join-room")
+    .getElementById(
+        "back-to-lobby"
+    )
     .addEventListener(
         "click",
-        joinRoom
+        () => {
+
+            botSelection.classList.add(
+                "hidden"
+            );
+
+            lobbyMain.classList.remove(
+                "hidden"
+            );
+
+            setStatus("");
+        }
     );
+
+/* =========================================================
+   BOT COUNT PREVIEW
+========================================================= */
+
+function updateBotPreview() {
+
+    const selected =
+        document.querySelector(
+            'input[name="bot-count"]:checked'
+        );
+
+    const count =
+        Number(
+            selected?.value || 0
+        );
+
+    const preview = {
+        blue:
+            document.getElementById(
+                "preview-blue"
+            ),
+
+        yellow:
+            document.getElementById(
+                "preview-yellow"
+            ),
+
+        green:
+            document.getElementById(
+                "preview-green"
+            )
+    };
+
+    BOT_SEATS.forEach(
+        (seat, index) => {
+
+            preview[seat].textContent =
+                index < count
+                    ? "Bot"
+                    : "Open";
+
+            preview[seat].className =
+                index < count
+                    ? "bot-seat"
+                    : "";
+        }
+    );
+}
+
+document
+    .querySelectorAll(
+        'input[name="bot-count"]'
+    )
+    .forEach(
+        radio => {
+
+            radio.addEventListener(
+                "change",
+                updateBotPreview
+            );
+        }
+    );
+
+document
+    .getElementById(
+        "btn-confirm-create"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            const selected =
+                document.querySelector(
+                    'input[name="bot-count"]:checked'
+                );
+
+            const count =
+                Number(
+                    selected?.value || 0
+                );
+
+            createRoom(
+                Math.max(
+                    0,
+                    Math.min(
+                        3,
+                        count
+                    )
+                )
+            );
+        }
+    );
+
+/* =========================================================
+   JOIN INPUT
+========================================================= */
 
 roomInput.addEventListener(
     "input",
     () => {
+
         roomInput.value =
             roomInput.value
                 .replace(
@@ -2434,6 +2907,7 @@ roomInput.addEventListener(
 roomInput.addEventListener(
     "keydown",
     event => {
+
         if (
             event.key === "Enter"
         ) {
@@ -2444,129 +2918,97 @@ roomInput.addEventListener(
 
 /* =========================================================
    SEAT BUTTONS
-   ========================================================= */
+========================================================= */
 
 document
-    .querySelectorAll(".seat-button")
-    .forEach(button => {
+    .querySelectorAll(
+        ".seat-button"
+    )
+    .forEach(
+        button => {
 
-        button.addEventListener(
-            "click",
-            event => {
+            button.addEventListener(
+                "click",
+                event => {
 
-                event.preventDefault();
+                    event.preventDefault();
 
-                const seat =
-                    button.dataset.seat;
-
-                claimSeat(seat);
-            }
-        );
-    });
+                    claimSeat(
+                        button.dataset.seat
+                    );
+                }
+            );
+        }
+    );
 
 /* =========================================================
    SHARE
-   ========================================================= */
-
-async function shareRoom() {
-
-    if (!roomCode) {
-        return;
-    }
-
-    const text =
-        `Join my 4-Player Chess game!\nRoom Code: ${roomCode}`;
-
-    try {
-
-        if (
-            navigator.share
-        ) {
-
-            await navigator.share({
-                title: "4-Player Chess",
-                text
-            });
-
-            return;
-        }
-
-    } catch (error) {
-
-        if (
-            error &&
-            error.name === "AbortError"
-        ) {
-            return;
-        }
-    }
-
-    try {
-
-        if (
-            navigator.clipboard &&
-            navigator.clipboard.writeText
-        ) {
-
-            await navigator.clipboard.writeText(
-                roomCode
-            );
-
-            alert(
-                `Room code copied: ${roomCode}`
-            );
-
-            return;
-        }
-
-    } catch {}
-
-    const temp =
-        document.createElement("textarea");
-
-    temp.value = roomCode;
-
-    temp.style.position =
-        "fixed";
-
-    temp.style.opacity = "0";
-
-    document.body.appendChild(temp);
-
-    temp.focus();
-    temp.select();
-
-    try {
-        document.execCommand(
-            "copy"
-        );
-    } catch {}
-
-    temp.remove();
-
-    alert(
-        `Room Code: ${roomCode}`
-    );
-}
+========================================================= */
 
 document
-    .getElementById("share-btn")
+    .getElementById(
+        "share-btn"
+    )
     .addEventListener(
         "click",
-        shareRoom
+        async () => {
+
+            if (!roomCode) {
+                return;
+            }
+
+            const text =
+                `Join my 4-Player Chess game!\nRoom Code: ${roomCode}`;
+
+            try {
+
+                if (
+                    navigator.share
+                ) {
+
+                    await navigator.share({
+                        title:
+                            "4-Player Chess",
+                        text
+                    });
+
+                    return;
+                }
+
+            } catch {}
+
+            try {
+
+                await navigator.clipboard.writeText(
+                    roomCode
+                );
+
+                alert(
+                    `Room code copied: ${roomCode}`
+                );
+
+            } catch {
+
+                alert(
+                    `Room Code: ${roomCode}`
+                );
+            }
+        }
     );
 
 /* =========================================================
    ROTATE
-   ========================================================= */
+========================================================= */
 
 document
-    .getElementById("rotate-btn")
+    .getElementById(
+        "rotate-btn"
+    )
     .addEventListener(
         "click",
         () => {
 
-            localState._manualRotation =
+            localState.manualRotation =
                 true;
 
             localState.boardRotation =
@@ -2580,64 +3022,12 @@ document
     );
 
 /* =========================================================
-   BOTS
-   ========================================================= */
-
-document
-    .getElementById("toggle-bot-btn")
-    .addEventListener(
-        "click",
-        async () => {
-
-            if (!roomRef) {
-                return;
-            }
-
-            try {
-
-                const updates = {};
-
-                PLAYERS.forEach(
-                    player => {
-
-                        if (
-                            !localState.seats[
-                                player
-                            ]
-                        ) {
-                            updates[
-                                "bots/" +
-                                player
-                            ] = true;
-                        }
-                    }
-                );
-
-                if (
-                    Object.keys(updates).length
-                ) {
-                    await roomRef.update(
-                        updates
-                    );
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Bot update failed:",
-                    error
-                );
-            }
-        }
-    );
-
-/* =========================================================
    UI
-   ========================================================= */
+========================================================= */
 
 function updateUI() {
 
-    const activePlayer =
+    const active =
         PLAYERS[
             localState.currentPlayerIdx
         ];
@@ -2655,62 +3045,77 @@ function updateUI() {
                     `card-${player}`
                 );
 
-            const seatButton =
+            const button =
                 document.getElementById(
                     `seat-btn-${player}`
                 );
 
-            const nameElement =
+            const name =
                 document.getElementById(
                     `name-${player}`
                 );
 
             card.className =
                 `player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 transition-all ${
-                    player === activePlayer
+                    active === player
                         ? `active-${player}`
                         : "border-transparent"
                 }`;
+
+            /*
+             * Bot
+             */
+
+            if (
+                localState.bots[player]
+            ) {
+
+                button.className =
+                    "hidden";
+
+                name.textContent =
+                    `${PLAYER_NAMES[player]} (Bot)`;
+
+                return;
+            }
+
+            /*
+             * Human
+             */
 
             if (
                 localState.seats[player]
             ) {
 
-                seatButton.className =
+                button.className =
                     "hidden";
 
-                nameElement.textContent =
+                name.textContent =
                     `${PLAYER_NAMES[player]} (${
                         localState.seats[player] === userId
                             ? "You"
                             : "Player"
                     })`;
 
-            } else if (
-                localState.bots[player]
-            ) {
-
-                seatButton.className =
-                    "hidden";
-
-                nameElement.textContent =
-                    `${PLAYER_NAMES[player]} (Bot)`;
-
-            } else {
-
-                seatButton.className =
-                    "seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition";
-
-                nameElement.textContent =
-                    `${PLAYER_NAMES[player]} (Open)`;
+                return;
             }
+
+            /*
+             * Open
+             */
+
+            button.className =
+                "seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200";
+
+            name.textContent =
+                `${PLAYER_NAMES[player]} (Open)`;
         }
     );
 }
 
 /* =========================================================
-   INITIAL RENDER
-   ========================================================= */
+   INITIAL
+========================================================= */
 
 lucide.createIcons();
 
@@ -2718,6 +3123,8 @@ localState.board =
     buildInitialBoard();
 
 renderBoard();
+
+updateBotPreview();
 </script>
 
 </body>
