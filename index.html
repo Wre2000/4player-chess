@@ -1,3131 +1,1584 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-<title>4-Player Chess Online</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<script>
-tailwind.config = {
-    theme: {
-        extend: {
-            colors: {
-                pRed: '#ef4444',
-                pBlue: '#3b82f6',
-                pYellow: '#eab308',
-                pGreen: '#22c55e'
-            }
-        }
-    }
-};
-</script>
-
-<script src="https://unpkg.com/lucide@latest"></script>
-
-<!-- FIREBASE CONFIG UNCHANGED -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<!-- Replace your existing move-generation / bot / move-animation logic with the code below.
+     This is for the standard Free-for-All 4-player rules:
+     Red → Blue → Yellow → Green
+     8th-rank automatic queen promotion
+     Dead pieces cannot be captured for points
+-->
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    min-height: 100%;
-}
-
-body {
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #f8fafc;
-    overflow-x: hidden;
-}
-
-button,
-input {
-    -webkit-tap-highlight-color: transparent;
-}
-
-button {
-    touch-action: manipulation;
-}
-
-.board-grid {
-    display: grid;
-    grid-template-columns: repeat(14, minmax(0, 1fr));
-    grid-template-rows: repeat(14, minmax(0, 1fr));
-    aspect-ratio: 1 / 1;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .7);
-    transition: transform .4s cubic-bezier(.4, 0, .2, 1);
-    transform-origin: center;
+/* Smooth Chess.com-style move animation */
+.chess-piece {
+    transition:
+        transform 180ms cubic-bezier(.2,.8,.2,1),
+        opacity 120ms ease,
+        filter 120ms ease;
+    will-change: transform;
 }
 
 .square {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    cursor: pointer;
-    min-width: 0;
-    min-height: 0;
+    transition: background-color 100ms ease, box-shadow 100ms ease;
+    touch-action: manipulation;
 }
 
-.square-light {
-    background-color: #eeeed2;
+.square.last-move {
+    box-shadow: inset 0 0 0 3px rgba(255, 215, 0, .45);
 }
 
-.square-dark {
-    background-color: #769656;
-}
-
-.square-out-of-bounds {
-    background: transparent;
-    pointer-events: none;
-    border: none !important;
-}
-
-.square-selected {
-    background-color: #baca44 !important;
-}
-
-.square-last-move {
-    background-color: rgba(245, 203, 66, .5) !important;
-}
-
-.move-dot {
-    width: 30%;
-    height: 30%;
-    background: rgba(0, 0, 0, .28);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.capture-ring {
+.square.valid-move::after {
+    content: "";
     position: absolute;
-    inset: 4px;
-    border: 4px solid rgba(239, 68, 68, .75);
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: rgba(0,0,0,.25);
+    pointer-events: none;
+}
+
+.square.capture-move::after {
+    content: "";
+    position: absolute;
+    inset: 8%;
+    border: 4px solid rgba(0,0,0,.28);
     border-radius: 50%;
     pointer-events: none;
 }
 
-.piece-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+@keyframes pieceLand {
+    0%   { transform: scale(.88); }
+    65%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
 }
 
-.piece-svg {
-    width: 85%;
-    height: 85%;
-    filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
-    pointer-events: none;
+@keyframes captureFlash {
+    0%   { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
+    40%  { box-shadow: inset 0 0 0 999px rgba(255,255,255,.12); }
+    100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
 }
 
-.glass-panel {
-    background: rgba(30, 41, 59, .85);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,.1);
+.square.just-moved {
+    animation: pieceLand 180ms ease-out;
 }
 
-.active-red {
-    box-shadow: 0 0 20px rgba(239,68,68,.6);
-    border-color: #ef4444 !important;
+.square.just-captured {
+    animation: captureFlash 220ms ease-out;
 }
 
-.active-blue {
-    box-shadow: 0 0 20px rgba(59,130,246,.6);
-    border-color: #3b82f6 !important;
-}
-
-.active-yellow {
-    box-shadow: 0 0 20px rgba(234,179,8,.6);
-    border-color: #eab308 !important;
-}
-
-.active-green {
-    box-shadow: 0 0 20px rgba(34,197,94,.6);
-    border-color: #22c55e !important;
-}
-
-.disabled-button {
-    opacity: .45;
-    pointer-events: none;
-}
-
-.bot-option {
-    cursor: pointer;
-}
-
-.bot-option input {
-    display: none;
-}
-
-.bot-option-card {
-    border: 2px solid #334155;
-    transition: .15s;
-}
-
-.bot-option input:checked + .bot-option-card {
-    border-color: #6366f1;
-    background: rgba(99,102,241,.18);
-    box-shadow: 0 0 18px rgba(99,102,241,.2);
-}
-
-.bot-seat {
-    color: #34d399;
+.promotion-queen {
+    animation: pieceLand 220ms ease-out;
 }
 </style>
-</head>
-
-<body class="min-h-screen flex flex-col items-center p-2 sm:p-4">
-
-<!-- =========================================================
-     LOBBY
-========================================================= -->
-
-<div id="lobby-modal"
-     class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-
-    <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
-
-        <div class="space-y-2 mb-6">
-
-            <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
-                <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
-            </div>
-
-            <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
-                4-Player Chess Online
-            </h2>
-
-            <p class="text-xs text-slate-400">
-                Play live 4-player chess with your friends.
-            </p>
-
-        </div>
-
-        <!-- CREATE GAME -->
-
-        <div id="lobby-main">
-
-            <button
-                id="btn-create-room"
-                type="button"
-                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg flex items-center justify-center gap-2">
-
-                <i data-lucide="plus-circle" class="w-5 h-5"></i>
-
-                Create New Room
-
-            </button>
-
-            <div class="flex items-center gap-2 my-4">
-
-                <div class="h-px bg-slate-700 flex-1"></div>
-
-                <span class="text-xs text-slate-500 font-semibold uppercase">
-                    Or Join Game
-                </span>
-
-                <div class="h-px bg-slate-700 flex-1"></div>
-
-            </div>
-
-            <div class="flex gap-2">
-
-                <input
-                    type="text"
-                    id="input-room-code"
-                    placeholder="ENTER ROOM CODE"
-                    maxlength="6"
-                    autocomplete="off"
-                    autocapitalize="characters"
-                    class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
-
-                <button
-                    id="btn-join-room"
-                    type="button"
-                    class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
-
-                    Join
-
-                </button>
-
-            </div>
-
-        </div>
-
-        <!-- BOT SELECTION -->
-
-        <div id="bot-selection" class="hidden">
-
-            <div class="text-left mb-4">
-
-                <button
-                    id="back-to-lobby"
-                    type="button"
-                    class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
-
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-
-                    Back
-
-                </button>
-
-            </div>
-
-            <h3 class="text-lg font-bold mb-1">
-                Create Game
-            </h3>
-
-            <p class="text-xs text-slate-400 mb-5">
-                Choose how many computer players you want.
-            </p>
-
-            <div class="grid grid-cols-4 gap-2 mb-5">
-
-                <label class="bot-option">
-                    <input
-                        type="radio"
-                        name="bot-count"
-                        value="0"
-                        checked>
-
-                    <div class="bot-option-card rounded-2xl p-3">
-
-                        <div class="text-xl font-black">
-                            0
-                        </div>
-
-                        <div class="text-[10px] text-slate-400">
-                            Bots
-                        </div>
-
-                    </div>
-                </label>
-
-                <label class="bot-option">
-                    <input
-                        type="radio"
-                        name="bot-count"
-                        value="1">
-
-                    <div class="bot-option-card rounded-2xl p-3">
-
-                        <div class="text-xl font-black">
-                            1
-                        </div>
-
-                        <div class="text-[10px] text-slate-400">
-                            Bot
-                        </div>
-
-                    </div>
-                </label>
-
-                <label class="bot-option">
-                    <input
-                        type="radio"
-                        name="bot-count"
-                        value="2">
-
-                    <div class="bot-option-card rounded-2xl p-3">
-
-                        <div class="text-xl font-black">
-                            2
-                        </div>
-
-                        <div class="text-[10px] text-slate-400">
-                            Bots
-                        </div>
-
-                    </div>
-                </label>
-
-                <label class="bot-option">
-                    <input
-                        type="radio"
-                        name="bot-count"
-                        value="3">
-
-                    <div class="bot-option-card rounded-2xl p-3">
-
-                        <div class="text-xl font-black">
-                            3
-                        </div>
-
-                        <div class="text-[10px] text-slate-400">
-                            Bots
-                        </div>
-
-                    </div>
-                </label>
-
-            </div>
-
-            <div class="bg-slate-900/60 rounded-2xl p-4 text-left mb-5">
-
-                <div class="text-xs font-semibold mb-3 text-slate-300">
-                    Starting seats
-                </div>
-
-                <div class="space-y-2 text-xs">
-
-                    <div class="flex justify-between">
-                        <span class="text-red-400">
-                            Red
-                        </span>
-
-                        <span>
-                            You
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-blue-400">
-                            Blue
-                        </span>
-
-                        <span id="preview-blue">
-                            Open
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-yellow-400">
-                            Yellow
-                        </span>
-
-                        <span id="preview-yellow">
-                            Open
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-green-400">
-                            Green
-                        </span>
-
-                        <span id="preview-green">
-                            Open
-                        </span>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <button
-                id="btn-confirm-create"
-                type="button"
-                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg">
-
-                Create Game
-
-            </button>
-
-        </div>
-
-        <p
-            id="lobby-status"
-            class="text-xs text-slate-400 min-h-[18px] mt-3">
-        </p>
-
-    </div>
-</div>
-
-<!-- =========================================================
-     HEADER
-========================================================= -->
-
-<header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
-
-    <div class="flex items-center space-x-3 min-w-0">
-
-        <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
-            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
-        </div>
-
-        <div class="min-w-0">
-
-            <div class="flex items-center gap-2">
-
-                <h1 class="text-base sm:text-lg font-bold tracking-tight">
-                    4-Player Chess
-                </h1>
-
-                <span
-                    id="room-badge"
-                    class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                    No Room
-                </span>
-
-            </div>
-
-            <p id="role-indicator" class="text-xs text-slate-400">
-                Seat: Spectator
-            </p>
-
-        </div>
-
-    </div>
-
-    <div class="flex items-center space-x-1 sm:space-x-2">
-
-        <button
-            id="share-btn"
-            type="button"
-            class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-
-            <i data-lucide="share-2" class="w-4 h-4"></i>
-
-            <span class="hidden sm:inline">
-                Share
-            </span>
-
-        </button>
-
-        <button
-            id="rotate-btn"
-            type="button"
-            class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-
-            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
-
-            <span class="hidden md:inline">
-                Rotate
-            </span>
-
-        </button>
-
-    </div>
-
-</header>
-
-<!-- =========================================================
-     GAME
-========================================================= -->
-
-<main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
-
-    <!-- LEFT -->
-
-    <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
-
-        <div
-            id="card-yellow"
-            class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-            <div class="flex items-center justify-between">
-
-                <div class="flex items-center gap-2">
-
-                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-
-                    <span
-                        id="name-yellow"
-                        class="font-bold text-xs text-yellow-400">
-                        Yellow (Top)
-                    </span>
-
-                </div>
-
-                <button
-                    id="seat-btn-yellow"
-                    data-seat="yellow"
-                    type="button"
-                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-
-                    Claim
-
-                </button>
-
-            </div>
-
-        </div>
-
-        <div
-            id="card-blue"
-            class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-            <div class="flex items-center justify-between">
-
-                <div class="flex items-center gap-2">
-
-                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-
-                    <span
-                        id="name-blue"
-                        class="font-bold text-xs text-blue-400">
-                        Blue (Left)
-                    </span>
-
-                </div>
-
-                <button
-                    id="seat-btn-blue"
-                    data-seat="blue"
-                    type="button"
-                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-
-                    Claim
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- BOARD -->
-
-    <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
-
-        <div
-            id="board"
-            class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
-        </div>
-
-    </div>
-
-    <!-- RIGHT -->
-
-    <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
-
-        <div class="flex flex-row lg:flex-col gap-2">
-
-            <div
-                id="card-green"
-                class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-                <div class="flex items-center justify-between">
-
-                    <div class="flex items-center gap-2">
-
-                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
-
-                        <span
-                            id="name-green"
-                            class="font-bold text-xs text-green-400">
-                            Green (Right)
-                        </span>
-
-                    </div>
-
-                    <button
-                        id="seat-btn-green"
-                        data-seat="green"
-                        type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-
-                        Claim
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div
-                id="card-red"
-                class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
-
-                <div class="flex items-center justify-between">
-
-                    <div class="flex items-center gap-2">
-
-                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
-
-                        <span
-                            id="name-red"
-                            class="font-bold text-xs text-red-400">
-                            Red (Bottom)
-                        </span>
-
-                    </div>
-
-                    <button
-                        id="seat-btn-red"
-                        data-seat="red"
-                        type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-
-                        Claim
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</main>
 
 <script>
-"use strict";
-
-/* =========================================================
-   FIREBASE
-   ========================================================= */
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBLIXmflLS3vfSVTZDJn15kLQg68ioEafQ",
-    authDomain: "chess4p.firebaseapp.com",
-    databaseURL: "https://chess4p-default-rtdb.firebaseio.com",
-    projectId: "chess4p",
-    storageBucket: "chess4p.firebasestorage.app",
-    messagingSenderId: "907300249071",
-    appId: "1:907300249071:web:17572edd070d1921666a1a"
-};
-
-firebase.initializeApp(firebaseConfig);
-
-const database = firebase.database();
-
-/* =========================================================
-   CONSTANTS
-   ========================================================= */
+/* ============================================================
+   4 PLAYER CHESS — LEGAL MOVE ENGINE
+   ============================================================ */
 
 const BOARD_SIZE = 14;
 
-const PLAYERS = [
-    "red",
-    "blue",
-    "yellow",
-    "green"
-];
+const PLAYERS = ['red', 'blue', 'yellow', 'green'];
 
-const PLAYER_NAMES = {
-    red: "Red",
-    blue: "Blue",
-    yellow: "Yellow",
-    green: "Green"
+const PLAYER_DIRECTIONS = {
+    red:    { dr: -1, dc:  0 },
+    blue:   { dr:  0, dc:  1 },
+    yellow: { dr:  1, dc:  0 },
+    green:  { dr:  0, dc: -1 }
 };
 
-const SEAT_ROTATIONS = {
-    red: 0,
-    blue: 270,
-    yellow: 180,
-    green: 90
+/*
+ * On the 14x14 4-player board, the FFA 8th-rank
+ * promotion squares are:
+ *
+ * Red    → row 5
+ * Blue   → column 8
+ * Yellow → row 8
+ * Green  → column 5
+ *
+ * This corresponds to each player's 8th rank in
+ * Chess.com's standard FFA setup.
+ */
+const PROMOTION_LINE = {
+    red:    r => r === 5,
+    blue:   (_, c) => c === 8,
+    yellow: r => r === 8,
+    green:  (_, c) => c === 5
 };
 
-const BOT_SEATS = [
-    "blue",
-    "yellow",
-    "green"
-];
 
-const PIECE_COLORS = {
-
-    red: {
-        fill: "#ef4444",
-        stroke: "#991b1b",
-        accent: "#fca5a5"
-    },
-
-    blue: {
-        fill: "#3b82f6",
-        stroke: "#1e40af",
-        accent: "#93c5fd"
-    },
-
-    yellow: {
-        fill: "#eab308",
-        stroke: "#854d0e",
-        accent: "#fef08a"
-    },
-
-    green: {
-        fill: "#22c55e",
-        stroke: "#166534",
-        accent: "#86efac"
-    },
-
-    gray: {
-        fill: "#64748b",
-        stroke: "#334155",
-        accent: "#cbd5e1"
-    }
-};
-
-const PAWN_DIRECTIONS = {
-
-    red: {
-        r: -1,
-        c: 0
-    },
-
-    blue: {
-        r: 0,
-        c: 1
-    },
-
-    yellow: {
-        r: 1,
-        c: 0
-    },
-
-    green: {
-        r: 0,
-        c: -1
-    }
-};
-
-/* =========================================================
-   USER ID
-========================================================= */
-
-function getUserId() {
-
-    const key =
-        "fourPlayerChessUserId";
-
-    try {
-
-        let id =
-            localStorage.getItem(key);
-
-        if (!id) {
-
-            id =
-                "user_" +
-                Math.random()
-                    .toString(36)
-                    .substring(2, 11);
-
-            localStorage.setItem(
-                key,
-                id
-            );
-        }
-
-        return id;
-
-    } catch {
-
-        return (
-            "user_" +
-            Math.random()
-                .toString(36)
-                .substring(2, 11)
-        );
-    }
-}
-
-const userId =
-    getUserId();
-
-/* =========================================================
-   STATE
-========================================================= */
-
-let roomCode = null;
-let roomRef = null;
-let roomListener = null;
-
-let botTimer = null;
-
-let creatingRoom = false;
-let joiningRoom = false;
-
-let localState = {
-
-    board:
-        Array.from(
-            { length: BOARD_SIZE },
-            () => Array(BOARD_SIZE).fill(null)
-        ),
-
-    currentPlayerIdx: 0,
-
-    eliminated: {
-        red: false,
-        blue: false,
-        yellow: false,
-        green: false
-    },
-
-    seats: {
-        red: null,
-        blue: null,
-        yellow: null,
-        green: null
-    },
-
-    bots: {
-        red: false,
-        blue: false,
-        yellow: false,
-        green: false
-    },
-
-    selectedSquare: null,
-
-    validMoves: [],
-
-    lastMove: null,
-
-    boardRotation: 0,
-
-    mySeat: null,
-
-    manualRotation: false
-};
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const boardEl =
-    document.getElementById("board");
-
-const lobbyModal =
-    document.getElementById("lobby-modal");
-
-const lobbyMain =
-    document.getElementById("lobby-main");
-
-const botSelection =
-    document.getElementById("bot-selection");
-
-const lobbyStatus =
-    document.getElementById("lobby-status");
-
-const roomInput =
-    document.getElementById(
-        "input-room-code"
-    );
-
-const roomBadge =
-    document.getElementById(
-        "room-badge"
-    );
-
-const roleIndicator =
-    document.getElementById(
-        "role-indicator"
-    );
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function setStatus(
-    text,
-    error = false
-) {
-
-    lobbyStatus.textContent =
-        text;
-
-    lobbyStatus.className =
-        "text-xs min-h-[18px] mt-3 " +
-        (
-            error
-                ? "text-red-400"
-                : "text-slate-400"
-        );
-}
-
-function emptyBoard() {
-
-    return Array.from(
-        { length: BOARD_SIZE },
-        () => Array(BOARD_SIZE).fill(null)
-    );
-}
+/* ---------- Board geometry ---------- */
 
 function isValidSquare(r, c) {
-
-    if (
-        r < 0 ||
-        r >= BOARD_SIZE ||
-        c < 0 ||
-        c >= BOARD_SIZE
-    ) {
+    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) {
         return false;
     }
 
-    const top = r < 3;
-    const bottom = r > 10;
-    const left = c < 3;
-    const right = c > 10;
+    /*
+     * 14x14 board with the four 3x3 corners removed.
+     * This creates the standard cross-shaped 4PC board.
+     */
+    if (r < 3 && c < 3) return false;
+    if (r < 3 && c > 10) return false;
+    if (r > 10 && c < 3) return false;
+    if (r > 10 && c > 10) return false;
 
-    return !(
-        (top && left) ||
-        (top && right) ||
-        (bottom && left) ||
-        (bottom && right)
+    return true;
+}
+
+
+function inside(r, c) {
+    return isValidSquare(r, c);
+}
+
+
+/* ---------- Helpers ---------- */
+
+function cloneBoard(board) {
+    return board.map(row =>
+        row.map(piece => piece ? { ...piece } : null)
     );
 }
 
-/* =========================================================
-   PIECES
-========================================================= */
 
-function getPieceSVG(
-    type,
-    colorKey
-) {
-
-    const colors =
-        PIECE_COLORS[colorKey] ||
-        PIECE_COLORS.gray;
-
-    const fill =
-        colors.fill;
-
-    const stroke =
-        colors.stroke;
-
-    const accent =
-        colors.accent;
-
-    const pieces = {
-
-        p: `
-        <path
-            d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="16"
-            cy="7"
-            r="4"
-            fill="${accent}"
-            stroke="${stroke}"
-            stroke-width="1.5"/>
-
-        <path
-            d="M9 28L23 28L21 31L11 31Z"
-            fill="${stroke}"/>
-        `,
-
-        r: `
-        <path
-            d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <rect
-            x="8"
-            y="27"
-            width="16"
-            height="4"
-            rx="1"
-            fill="${stroke}"/>
-        `,
-
-        n: `
-        <path
-            d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="12"
-            cy="11"
-            r="1.5"
-            fill="${accent}"/>
-        `,
-
-        b: `
-        <path
-            d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="16"
-            cy="6"
-            r="2.5"
-            fill="${accent}"
-            stroke="${stroke}"
-            stroke-width="1"/>
-        `,
-
-        q: `
-        <path
-            d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="16"
-            cy="9"
-            r="2"
-            fill="${accent}"/>
-        `,
-
-        k: `
-        <path
-            d="M8 29L24 29L22 17L16 14L10 17Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <line
-            x1="16"
-            y1="6"
-            x2="16"
-            y2="13"
-            stroke="${accent}"
-            stroke-width="2.5"/>
-        `
-    };
-
-    return `
-        <svg
-            viewBox="0 0 32 32"
-            class="piece-svg">
-
-            ${pieces[type] || ""}
-
-        </svg>
-    `;
+function sameSquare(a, b) {
+    return a && b && a.r === b.r && a.c === b.c;
 }
 
-/* =========================================================
-   INITIAL BOARD
-========================================================= */
 
-function buildInitialBoard() {
-
-    const board =
-        emptyBoard();
-
-    const backline = [
-        "r",
-        "n",
-        "b",
-        "q",
-        "k",
-        "b",
-        "n",
-        "r"
-    ];
-
-    const pawns =
-        Array(8).fill("p");
-
-    function placeRow(
-        row,
-        start,
-        pieces,
-        player
-    ) {
-
-        pieces.forEach(
-            (type, i) => {
-
-                board[row][start + i] = {
-                    type,
-                    player,
-                    moved: false
-                };
-
-            }
-        );
-    }
-
-    function placeCol(
-        col,
-        start,
-        pieces,
-        player
-    ) {
-
-        pieces.forEach(
-            (type, i) => {
-
-                board[start + i][col] = {
-                    type,
-                    player,
-                    moved: false
-                };
-
-            }
-        );
-    }
-
-    placeRow(
-        13,
-        3,
-        backline,
-        "red"
-    );
-
-    placeRow(
-        12,
-        3,
-        pawns,
-        "red"
-    );
-
-    placeRow(
-        0,
-        3,
-        [...backline].reverse(),
-        "yellow"
-    );
-
-    placeRow(
-        1,
-        3,
-        pawns,
-        "yellow"
-    );
-
-    placeCol(
-        0,
-        3,
-        backline,
-        "blue"
-    );
-
-    placeCol(
-        1,
-        3,
-        pawns,
-        "blue"
-    );
-
-    placeCol(
-        13,
-        3,
-        [...backline].reverse(),
-        "green"
-    );
-
-    placeCol(
-        12,
-        3,
-        pawns,
-        "green"
-    );
-
-    return board;
+function isDeadPiece(piece) {
+    return piece && piece.player === 'gray';
 }
 
-/* =========================================================
-   RENDER
-========================================================= */
 
-function renderBoard() {
+function isEnemy(piece, target) {
+    if (!target) return false;
+    if (target.player === piece.player) return false;
 
-    boardEl.innerHTML = "";
+    /*
+     * Dead pieces are not active targets in Chess.com's
+     * FFA rules.
+     */
+    if (target.player === 'gray') return false;
 
-    boardEl.style.transform =
-        `rotate(${localState.boardRotation}deg)`;
-
-    for (
-        let r = 0;
-        r < BOARD_SIZE;
-        r++
-    ) {
-
-        for (
-            let c = 0;
-            c < BOARD_SIZE;
-            c++
-        ) {
-
-            const square =
-                document.createElement("div");
-
-            square.dataset.row = r;
-            square.dataset.col = c;
-
-            if (
-                !isValidSquare(r, c)
-            ) {
-
-                square.className =
-                    "square square-out-of-bounds";
-
-                boardEl.appendChild(
-                    square
-                );
-
-                continue;
-            }
-
-            square.className =
-                "square " +
-                (
-                    (r + c) % 2 === 0
-                        ? "square-light"
-                        : "square-dark"
-                );
-
-            if (
-                localState.selectedSquare &&
-                localState.selectedSquare.r === r &&
-                localState.selectedSquare.c === c
-            ) {
-                square.classList.add(
-                    "square-selected"
-                );
-            }
-
-            if (
-                localState.lastMove &&
-                (
-                    (
-                        localState.lastMove.from.r === r &&
-                        localState.lastMove.from.c === c
-                    ) ||
-                    (
-                        localState.lastMove.to.r === r &&
-                        localState.lastMove.to.c === c
-                    )
-                )
-            ) {
-
-                square.classList.add(
-                    "square-last-move"
-                );
-            }
-
-            const target =
-                localState.validMoves.some(
-                    m =>
-                        m.r === r &&
-                        m.c === c
-                );
-
-            if (target) {
-
-                if (
-                    localState.board[r][c]
-                ) {
-
-                    const ring =
-                        document.createElement("div");
-
-                    ring.className =
-                        "capture-ring";
-
-                    square.appendChild(
-                        ring
-                    );
-
-                } else {
-
-                    const dot =
-                        document.createElement("div");
-
-                    dot.className =
-                        "move-dot";
-
-                    square.appendChild(
-                        dot
-                    );
-                }
-            }
-
-            const piece =
-                localState.board[r][c];
-
-            if (piece) {
-
-                const wrapper =
-                    document.createElement("div");
-
-                wrapper.className =
-                    "piece-wrapper";
-
-                wrapper.style.transform =
-                    `rotate(-${localState.boardRotation}deg)`;
-
-                wrapper.innerHTML =
-                    getPieceSVG(
-                        piece.type,
-                        piece.player
-                    );
-
-                square.appendChild(
-                    wrapper
-                );
-            }
-
-            square.addEventListener(
-                "pointerup",
-                event => {
-
-                    event.preventDefault();
-
-                    handleSquareClick(
-                        r,
-                        c
-                    );
-                },
-                {
-                    passive: false
-                }
-            );
-
-            boardEl.appendChild(
-                square
-            );
-        }
-    }
-
-    updateUI();
+    return true;
 }
 
-/* =========================================================
-   PLAYER MOVE
-========================================================= */
 
-function handleSquareClick(
-    r,
-    c
-) {
+/* ============================================================
+   PAWN MOVEMENT
+   ============================================================ */
 
-    const active =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
-
-    if (
-        localState.mySeat !== active
-    ) {
-        return;
-    }
-
-    if (
-        localState.bots[active]
-    ) {
-        return;
-    }
-
-    if (
-        localState.eliminated[active]
-    ) {
-        return;
-    }
-
-    if (
-        localState.selectedSquare
-    ) {
-
-        const move =
-            localState.validMoves.find(
-                m =>
-                    m.r === r &&
-                    m.c === c
-            );
-
-        if (move) {
-
-            const from = {
-                r: localState.selectedSquare.r,
-                c: localState.selectedSquare.c
-            };
-
-            const to = {
-                r,
-                c
-            };
-
-            localState.selectedSquare =
-                null;
-
-            localState.validMoves =
-                [];
-
-            renderBoard();
-
-            dispatchMove(
-                from,
-                to
-            );
-
-            return;
-        }
-    }
-
-    const piece =
-        localState.board[r][c];
-
-    if (
-        piece &&
-        piece.player === active
-    ) {
-
-        localState.selectedSquare = {
-            r,
-            c
-        };
-
-        localState.validMoves =
-            getValidMovesForPiece(
-                r,
-                c
-            );
-
-    } else {
-
-        localState.selectedSquare =
-            null;
-
-        localState.validMoves =
-            [];
-    }
-
-    renderBoard();
-}
-
-/* =========================================================
-   MOVE VALIDATION
-========================================================= */
-
-function getValidMovesForPiece(
-    r,
-    c
-) {
-
-    return getMoves(
-        localState.board,
-        r,
-        c
-    );
-}
-
-function getMoves(
-    board,
-    r,
-    c
-) {
-
-    const piece =
-        board?.[r]?.[c];
-
-    if (!piece) {
-        return [];
-    }
-
+function getPawnMoves(board, r, c, piece) {
     const moves = [];
 
-    function valid(
-        row,
-        col
-    ) {
+    const dir = PLAYER_DIRECTIONS[piece.player];
 
-        return isValidSquare(
-            row,
-            col
-        );
-    }
+    const nr = r + dir.dr;
+    const nc = c + dir.dc;
 
-    function add(
-        row,
-        col
-    ) {
+    if (inside(nr, nc) && !board[nr][nc]) {
+        moves.push({ r: nr, c: nc });
 
-        if (!valid(row, col)) {
-            return;
-        }
-
-        const target =
-            board[row][col];
-
-        if (
-            !target ||
-            target.player !== piece.player
-        ) {
-
-            moves.push({
-                r: row,
-                c: col
-            });
-        }
-    }
-
-    if (
-        piece.type === "p"
-    ) {
-
-        const dir =
-            PAWN_DIRECTIONS[
-                piece.player
-            ];
-
-        if (!dir) {
-            return [];
-        }
-
-        const nr =
-            r + dir.r;
-
-        const nc =
-            c + dir.c;
-
-        if (
-            valid(nr, nc) &&
-            !board[nr][nc]
-        ) {
-
-            moves.push({
-                r: nr,
-                c: nc
-            });
-
-            if (!piece.moved) {
-
-                const nr2 =
-                    r + dir.r * 2;
-
-                const nc2 =
-                    c + dir.c * 2;
-
-                if (
-                    valid(nr2, nc2) &&
-                    !board[nr2][nc2]
-                ) {
-
-                    moves.push({
-                        r: nr2,
-                        c: nc2
-                    });
-                }
-            }
-        }
-
-        const captures =
-            dir.r !== 0
-                ? [
-                    [dir.r, -1],
-                    [dir.r, 1]
-                ]
-                : [
-                    [-1, dir.c],
-                    [1, dir.c]
-                ];
-
-        for (
-            const [dr, dc]
-            of captures
-        ) {
-
-            const cr =
-                r + dr;
-
-            const cc =
-                c + dc;
+        /*
+         * Two-square first move.
+         */
+        if (!piece.moved) {
+            const nr2 = r + dir.dr * 2;
+            const nc2 = c + dir.dc * 2;
 
             if (
-                !valid(cr, cc)
+                inside(nr2, nc2) &&
+                !board[nr2][nc2]
             ) {
-                continue;
-            }
-
-            const target =
-                board[cr][cc];
-
-            if (
-                target &&
-                target.player !== piece.player &&
-                target.player !== "gray"
-            ) {
-
-                moves.push({
-                    r: cr,
-                    c: cc
-                });
+                moves.push({ r: nr2, c: nc2 });
             }
         }
-
-        return moves;
     }
 
-    if (
-        piece.type === "n"
-    ) {
+    /*
+     * Pawn captures are perpendicular to its direction.
+     *
+     * Red/Yellow move vertically:
+     *     dr = +/-1, dc = 0
+     *
+     * Blue/Green move horizontally:
+     *     dr = 0, dc = +/-1
+     */
+    let captureSquares;
 
-        const offsets = [
-            [-2,-1],
-            [-2,1],
-            [-1,-2],
-            [-1,2],
-            [1,-2],
-            [1,2],
-            [2,-1],
-            [2,1]
+    if (dir.dr !== 0) {
+        captureSquares = [
+            { r: r + dir.dr, c: c - 1 },
+            { r: r + dir.dr, c: c + 1 }
         ];
-
-        offsets.forEach(
-            ([dr, dc]) => {
-
-                add(
-                    r + dr,
-                    c + dc
-                );
-            }
-        );
-
-        return moves;
+    } else {
+        captureSquares = [
+            { r: r - 1, c: c + dir.dc },
+            { r: r + 1, c: c + dir.dc }
+        ];
     }
 
-    if (
-        piece.type === "k"
-    ) {
-
-        for (
-            let dr = -1;
-            dr <= 1;
-            dr++
+    for (const target of captureSquares) {
+        if (
+            inside(target.r, target.c) &&
+            isEnemy(piece, board[target.r][target.c])
         ) {
-
-            for (
-                let dc = -1;
-                dc <= 1;
-                dc++
-            ) {
-
-                if (
-                    dr === 0 &&
-                    dc === 0
-                ) {
-                    continue;
-                }
-
-                add(
-                    r + dr,
-                    c + dc
-                );
-            }
-        }
-
-        return moves;
-    }
-
-    let directions = [];
-
-    if (
-        piece.type === "b"
-    ) {
-
-        directions = [
-            [1,1],
-            [1,-1],
-            [-1,1],
-            [-1,-1]
-        ];
-    }
-
-    if (
-        piece.type === "r"
-    ) {
-
-        directions = [
-            [1,0],
-            [-1,0],
-            [0,1],
-            [0,-1]
-        ];
-    }
-
-    if (
-        piece.type === "q"
-    ) {
-
-        directions = [
-            [1,1],
-            [1,-1],
-            [-1,1],
-            [-1,-1],
-            [1,0],
-            [-1,0],
-            [0,1],
-            [0,-1]
-        ];
-    }
-
-    for (
-        const [dr, dc]
-        of directions
-    ) {
-
-        let nr =
-            r + dr;
-
-        let nc =
-            c + dc;
-
-        while (
-            valid(nr, nc)
-        ) {
-
-            const target =
-                board[nr][nc];
-
-            if (!target) {
-
-                moves.push({
-                    r: nr,
-                    c: nc
-                });
-
-            } else {
-
-                if (
-                    target.player !==
-                    piece.player
-                ) {
-
-                    moves.push({
-                        r: nr,
-                        c: nc
-                    });
-                }
-
-                break;
-            }
-
-            nr += dr;
-            nc += dc;
+            moves.push(target);
         }
     }
 
     return moves;
 }
 
-/* =========================================================
-   DISPATCH MOVE
-========================================================= */
 
-async function dispatchMove(
-    from,
-    to
-) {
+/* ============================================================
+   KNIGHT
+   ============================================================ */
 
-    if (!roomRef) {
-        return;
+function getKnightMoves(board, r, c, piece) {
+    const moves = [];
+
+    const offsets = [
+        [-2,-1], [-2,1],
+        [-1,-2], [-1,2],
+        [1,-2],  [1,2],
+        [2,-1],  [2,1]
+    ];
+
+    for (const [dr, dc] of offsets) {
+        const nr = r + dr;
+        const nc = c + dc;
+
+        if (!inside(nr, nc)) continue;
+
+        const target = board[nr][nc];
+
+        if (!target || isEnemy(piece, target)) {
+            moves.push({ r: nr, c: nc });
+        }
     }
 
-    try {
+    return moves;
+}
 
-        await roomRef.transaction(
-            data => {
 
-                if (!data) {
-                    return;
-                }
+/* ============================================================
+   SLIDING PIECES
+   ============================================================ */
 
-                let board;
+function getSlidingMoves(board, r, c, piece, directions) {
+    const moves = [];
 
-                try {
+    for (const [dr, dc] of directions) {
+        let nr = r + dr;
+        let nc = c + dc;
 
-                    board =
-                        JSON.parse(
-                            data.boardStr
-                        );
+        while (inside(nr, nc)) {
+            const target = board[nr][nc];
 
-                } catch {
+            /*
+             * Empty square:
+             * continue through it.
+             */
+            if (!target) {
+                moves.push({ r: nr, c: nc });
 
-                    return;
-                }
-
-                const currentIdx =
-                    Number(
-                        data.currentPlayerIdx
-                    );
-
-                const player =
-                    PLAYERS[
-                        currentIdx
-                    ];
-
-                const seats =
-                    data.seats || {};
-
-                const bots =
-                    data.bots || {};
-
-                const eliminated =
-                    data.eliminated || {};
-
-                /*
-                 * HUMAN MOVE:
-                 *
-                 * The current seat must belong
-                 * to this browser.
-                 *
-                 * BOT MOVE:
-                 *
-                 * The creator (Red) controls all
-                 * bot players.
-                 */
-                const isHumanMove =
-                    seats[player] === userId;
-
-                const isBotMove =
-                    bots[player] === true &&
-                    seats.red === userId;
-
-                if (
-                    !isHumanMove &&
-                    !isBotMove
-                ) {
-                    return;
-                }
-
-                if (
-                    eliminated[player]
-                ) {
-                    return;
-                }
-
-                const piece =
-                    board?.[from.r]?.[from.c];
-
-                if (!piece) {
-                    return;
-                }
-
-                if (
-                    piece.player !== player
-                ) {
-                    return;
-                }
-
-                const legalMoves =
-                    getMoves(
-                        board,
-                        from.r,
-                        from.c
-                    );
-
-                const legal =
-                    legalMoves.some(
-                        move =>
-                            move.r === to.r &&
-                            move.c === to.c
-                    );
-
-                if (!legal) {
-                    return;
-                }
-
-                const target =
-                    board[to.r][to.c];
-
-                board[to.r][to.c] = {
-                    ...piece,
-                    moved: true
-                };
-
-                board[from.r][from.c] =
-                    null;
-
-                const nextEliminated = {
-                    red: false,
-                    blue: false,
-                    yellow: false,
-                    green: false,
-                    ...eliminated
-                };
-
-                /*
-                 * Capture king = elimination.
-                 */
-
-                if (
-                    target &&
-                    target.type === "k" &&
-                    target.player !== "gray"
-                ) {
-
-                    nextEliminated[
-                        target.player
-                    ] = true;
-
-                    for (
-                        let r = 0;
-                        r < BOARD_SIZE;
-                        r++
-                    ) {
-
-                        for (
-                            let c = 0;
-                            c < BOARD_SIZE;
-                            c++
-                        ) {
-
-                            if (
-                                board[r][c] &&
-                                board[r][c].player ===
-                                target.player
-                            ) {
-
-                                board[r][c] = {
-                                    ...board[r][c],
-                                    player: "gray"
-                                };
-                            }
-                        }
-                    }
-                }
-
-                /*
-                 * Find next living player.
-                 */
-
-                let nextIdx =
-                    currentIdx;
-
-                for (
-                    let i = 0;
-                    i < PLAYERS.length;
-                    i++
-                ) {
-
-                    nextIdx =
-                        (
-                            nextIdx + 1
-                        ) %
-                        PLAYERS.length;
-
-                    if (
-                        !nextEliminated[
-                            PLAYERS[nextIdx]
-                        ]
-                    ) {
-                        break;
-                    }
-                }
-
-                return {
-
-                    ...data,
-
-                    boardStr:
-                        JSON.stringify(
-                            board
-                        ),
-
-                    currentPlayerIdx:
-                        nextIdx,
-
-                    eliminated:
-                        nextEliminated,
-
-                    lastMove: {
-                        from,
-                        to,
-                        player,
-                        timestamp:
-                            firebase.database
-                                .ServerValue
-                                .TIMESTAMP
-                    }
-
-                };
+                nr += dr;
+                nc += dc;
+                continue;
             }
-        );
 
-    } catch (error) {
+            /*
+             * Friendly piece blocks the ray.
+             */
+            if (target.player === piece.player) {
+                break;
+            }
 
-        console.error(
-            "Move failed:",
-            error
-        );
+            /*
+             * Dead pieces behave as inactive pieces and
+             * still occupy the square.
+             */
+            if (target.player === 'gray') {
+                break;
+            }
+
+            /*
+             * Enemy piece can be captured, but blocks
+             * everything behind it.
+             */
+            moves.push({ r: nr, c: nc });
+            break;
+        }
+    }
+
+    return moves;
+}
+
+
+/* ============================================================
+   KING
+   ============================================================ */
+
+function getKingMoves(board, r, c, piece) {
+    const moves = [];
+
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+
+            const nr = r + dr;
+            const nc = c + dc;
+
+            if (!inside(nr, nc)) continue;
+
+            const target = board[nr][nc];
+
+            if (!target || isEnemy(piece, target)) {
+                moves.push({ r: nr, c: nc });
+            }
+        }
+    }
+
+    return moves;
+}
+
+
+/* ============================================================
+   COMPLETE LEGAL MOVE GENERATOR
+   ============================================================ */
+
+function getValidMovesOnBoard(board, r, c) {
+    if (!inside(r, c)) return [];
+
+    const piece = board[r][c];
+
+    if (!piece || piece.player === 'gray') {
+        return [];
+    }
+
+    switch (piece.type) {
+
+        case 'pawn':
+            return getPawnMoves(board, r, c, piece);
+
+        case 'knight':
+            return getKnightMoves(board, r, c, piece);
+
+        case 'bishop':
+            return getSlidingMoves(
+                board,
+                r,
+                c,
+                piece,
+                [
+                    [-1,-1],
+                    [-1, 1],
+                    [ 1,-1],
+                    [ 1, 1]
+                ]
+            );
+
+        case 'rook':
+            return getSlidingMoves(
+                board,
+                r,
+                c,
+                piece,
+                [
+                    [-1,0],
+                    [1,0],
+                    [0,-1],
+                    [0,1]
+                ]
+            );
+
+        case 'queen':
+            return getSlidingMoves(
+                board,
+                r,
+                c,
+                piece,
+                [
+                    [-1,-1],
+                    [-1, 1],
+                    [ 1,-1],
+                    [ 1, 1],
+                    [-1,0],
+                    [1,0],
+                    [0,-1],
+                    [0,1]
+                ]
+            );
+
+        case 'king':
+            return getKingMoves(board, r, c, piece);
+
+        default:
+            return [];
     }
 }
 
-/* =========================================================
-   BOT ENGINE
-========================================================= */
 
 /*
- * Only the RED/host client runs bots.
- *
- * This is much safer than having all four clients
- * independently run the same bot.
+ * Keep compatibility with the rest of your existing app.
  */
-
-function scheduleBot() {
-
-    if (botTimer) {
-        clearTimeout(botTimer);
-    }
-
-    botTimer =
-        setTimeout(
-            runBotIfNeeded,
-            700
-        );
+function getValidMovesForPiece(r, c) {
+    return getValidMovesOnBoard(localState.board, r, c);
 }
 
-async function runBotIfNeeded() {
 
-    if (!roomRef) {
-        return;
-    }
+/* ============================================================
+   BOT ENGINE
+   ============================================================ */
 
-    /*
-     * Only the room creator / Red player
-     * controls bots.
-     */
-    if (
-        localState.seats.red !== userId
-    ) {
-        return;
-    }
+let botTimer = null;
+let botBusy = false;
+let lastBotSignature = null;
+
+
+/*
+ * Only the room host controls bots.
+ *
+ * This is important. If every connected client tries to move
+ * the same bot, the game becomes extremely choppy and multiple
+ * bot moves can race each other.
+ */
+function isBotController() {
+    return (
+        localState.hostId === userId &&
+        !!localState.hostId
+    );
+}
+
+
+function getBotSignature() {
+    return [
+        localState.currentPlayerIdx,
+        localState.lastMove
+            ? JSON.stringify(localState.lastMove)
+            : 'start'
+    ].join('|');
+}
+
+
+function checkAndTriggerBotMove() {
+
+    if (!isBotController()) return;
 
     const player =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
+        PLAYERS[localState.currentPlayerIdx];
+
+    if (!localState.bots[player]) return;
+
+    if (localState.eliminated[player]) return;
+
+    if (botTimer || botBusy) return;
+
+    const signature = getBotSignature();
+
+    /*
+     * Prevent Firebase's value listener from scheduling
+     * the same bot turn several times.
+     */
+    if (lastBotSignature === signature) return;
+
+    lastBotSignature = signature;
+
+    /*
+     * Small delay makes the bot feel like an actual player
+     * instead of instantly firing every time Firebase updates.
+     */
+    botTimer = setTimeout(() => {
+        botTimer = null;
+        runBotTurn(player);
+    }, 450);
+}
+
+
+/*
+ * The bot evaluates ALL legal moves generated by the same
+ * engine used by human players.
+ */
+function runBotTurn(player) {
+
+    if (botBusy) return;
+
+    if (!isBotController()) return;
 
     if (
-        !localState.bots[player]
-    ) {
-        return;
-    }
-
-    if (
+        PLAYERS[localState.currentPlayerIdx] !== player ||
+        !localState.bots[player] ||
         localState.eliminated[player]
     ) {
         return;
     }
 
-    const moves = [];
+    botBusy = true;
 
-    for (
-        let r = 0;
-        r < BOARD_SIZE;
-        r++
-    ) {
+    const allMoves = [];
 
-        for (
-            let c = 0;
-            c < BOARD_SIZE;
-            c++
-        ) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
 
-            const piece =
-                localState.board[r][c];
+            const piece = localState.board[r][c];
 
-            if (
-                !piece ||
-                piece.player !== player
-            ) {
+            if (!piece || piece.player !== player) {
                 continue;
             }
 
-            const legal =
-                getMoves(
+            const legalMoves =
+                getValidMovesOnBoard(
                     localState.board,
                     r,
                     c
                 );
 
-            legal.forEach(
-                move => {
+            for (const to of legalMoves) {
+                const target =
+                    localState.board[to.r][to.c];
 
-                    moves.push({
-                        from: {
-                            r,
-                            c
-                        },
-
-                        to: move
-                    });
-
-                }
-            );
+                allMoves.push({
+                    from: { r, c },
+                    to,
+                    target,
+                    piece
+                });
+            }
         }
     }
 
-    if (!moves.length) {
+    /*
+     * No legal moves.
+     *
+     * Rather than freezing the entire game, skip the bot's
+     * turn. This is especially useful with a simplified
+     * 4PC implementation that does not yet implement
+     * full check/checkmate detection.
+     */
+    if (!allMoves.length) {
+        botBusy = false;
+        advanceBotTurn(player);
         return;
     }
 
     /*
-     * Prefer captures.
+     * Give the bot a basic but legal 4PC strategy:
+     *
+     * 1. Captures
+     * 2. Promotion
+     * 3. Higher-value captures
+     * 4. Forward pawn moves
+     * 5. Random legal move
      */
+    const captures = allMoves.filter(
+        move =>
+            move.target &&
+            move.target.player !== 'gray'
+    );
 
-    const captures =
-        moves.filter(
+    const promotionMoves = allMoves.filter(
+        move =>
+            move.piece.type === 'pawn' &&
+            PROMOTION_LINE[player](
+                move.to.r,
+                move.to.c
+            )
+    );
+
+    let candidates;
+
+    if (promotionMoves.length) {
+        candidates = promotionMoves;
+    } else if (captures.length) {
+        candidates = captures;
+    } else {
+        candidates = allMoves;
+    }
+
+    /*
+     * Prefer valuable captures without making the bot
+     * completely deterministic.
+     */
+    if (captures.length && candidates === captures) {
+
+        const values = {
+            pawn: 1,
+            knight: 3,
+            bishop: 5,
+            rook: 5,
+            queen: 9,
+            king: 20
+        };
+
+        let bestValue = -1;
+
+        for (const move of candidates) {
+            const value =
+                values[move.target.type] || 0;
+
+            if (value > bestValue) {
+                bestValue = value;
+            }
+        }
+
+        candidates = candidates.filter(
             move =>
-                localState.board[
-                    move.to.r
-                ][
-                    move.to.c
-                ] !== null
+                (values[move.target.type] || 0)
+                === bestValue
         );
-
-    const choices =
-        captures.length
-            ? captures
-            : moves;
+    }
 
     const chosen =
-        choices[
+        candidates[
             Math.floor(
-                Math.random() *
-                choices.length
+                Math.random() * candidates.length
             )
         ];
 
     /*
-     * Small delay so bot moves
-     * look natural instead of instant.
+     * A second delay prevents the bot from appearing to
+     * teleport through a chain of moves.
      */
+    setTimeout(() => {
 
-    setTimeout(
-        () => {
+        if (
+            !isBotController() ||
+            PLAYERS[localState.currentPlayerIdx] !== player
+        ) {
+            botBusy = false;
+            return;
+        }
 
-            /*
-             * Make sure it is still this
-             * bot's turn.
-             */
+        dispatchMove(
+            chosen.from,
+            chosen.to,
+            true
+        );
 
-            if (
-                PLAYERS[
-                    localState.currentPlayerIdx
-                ] !== player
-            ) {
-                return;
-            }
+        botBusy = false;
 
-            dispatchMove(
-                chosen.from,
-                chosen.to
-            );
-
-        },
-        350
-    );
+    }, 150);
 }
 
-/* =========================================================
-   SEAT CLAIM
-========================================================= */
 
-async function claimSeat(
-    seat
-) {
+/* ============================================================
+   BOT TURN SKIP
+   ============================================================ */
 
-    if (!roomRef) {
-        return;
+function advanceBotTurn(player) {
+
+    if (!roomRef) return;
+
+    roomRef.transaction(data => {
+
+        if (!data) return;
+
+        if (data.hostId !== userId) return;
+
+        if (PLAYERS[data.currentPlayerIdx] !== player) {
+            return;
+        }
+
+        if (!data.bots || !data.bots[player]) {
+            return;
+        }
+
+        let next = data.currentPlayerIdx;
+
+        for (let i = 0; i < 4; i++) {
+
+            next = (next + 1) % 4;
+
+            const nextPlayer = PLAYERS[next];
+
+            if (!data.eliminated[nextPlayer]) {
+                data.currentPlayerIdx = next;
+                break;
+            }
+        }
+
+        return data;
+    });
+}
+
+
+/* ============================================================
+   PROMOTION
+   ============================================================ */
+
+function shouldPromote(piece, to) {
+
+    if (!piece || piece.type !== 'pawn') {
+        return false;
+    }
+
+    const rule = PROMOTION_LINE[piece.player];
+
+    return !!rule && rule(to.r, to.c);
+}
+
+
+/*
+ * Chess.com's standard FFA automatically promotes to a queen.
+ *
+ * We use a special flag so your renderer can optionally show
+ * a small "1" marker on promoted queens if desired.
+ */
+function promotePawn(piece) {
+
+    return {
+        ...piece,
+        type: 'queen',
+        promoted: true,
+        promotionValue: 1,
+        moved: true
+    };
+}
+
+
+/* ============================================================
+   LEGAL MOVE EXECUTION
+   ============================================================ */
+
+function dispatchMove(from, to, isBot = false) {
+
+    if (!roomRef) return;
+
+    const player =
+        PLAYERS[localState.currentPlayerIdx];
+
+    /*
+     * Human authorization.
+     */
+    if (!isBot) {
+
+        if (
+            localState.seats[player] !== userId
+        ) {
+            return;
+        }
     }
 
     /*
-     * A bot seat cannot be claimed.
+     * Bot authorization.
      */
-
-    if (
-        localState.bots[seat]
-    ) {
-        return;
-    }
-
-    const ref =
-        roomRef.child(
-            "seats/" + seat
-        );
-
-    try {
-
-        const result =
-            await ref.transaction(
-                current => {
-
-                    if (
-                        current === null ||
-                        current === userId
-                    ) {
-                        return userId;
-                    }
-
-                    return;
-                }
-            );
+    if (isBot) {
 
         if (
-            !result.committed
+            !localState.bots[player] ||
+            localState.hostId !== userId
+        ) {
+            return;
+        }
+    }
+
+    roomRef.transaction(data => {
+
+        if (!data) return;
+
+        const currentPlayer =
+            PLAYERS[data.currentPlayerIdx];
+
+        /*
+         * Firebase transaction re-check.
+         *
+         * This prevents two clients from both moving during
+         * the same turn.
+         */
+        const humanAllowed =
+            data.seats &&
+            data.seats[currentPlayer] === userId;
+
+        const botAllowed =
+            data.hostId === userId &&
+            data.bots &&
+            data.bots[currentPlayer];
+
+        if (!humanAllowed && !botAllowed) {
+            return;
+        }
+
+        if (
+            data.eliminated &&
+            data.eliminated[currentPlayer]
         ) {
             return;
         }
 
-        await roomRef
-            .child(
-                "bots/" + seat
-            )
-            .set(false);
+        const board =
+            JSON.parse(data.boardStr);
 
-        localState.mySeat =
-            seat;
+        const piece =
+            board[from.r]?.[from.c];
 
-        localState.boardRotation =
-            SEAT_ROTATIONS[seat];
+        if (!piece) return;
 
-        localState.manualRotation =
-            false;
+        if (piece.player !== currentPlayer) {
+            return;
+        }
 
-        localState.selectedSquare =
-            null;
+        /*
+         * CRITICAL:
+         * Recalculate legal moves from the board inside
+         * the Firebase transaction, not from a stale client.
+         */
+        const legalMoves =
+            getValidMovesOnBoard(
+                board,
+                from.r,
+                from.c
+            );
 
-        localState.validMoves =
-            [];
+        const legal =
+            legalMoves.some(
+                move =>
+                    move.r === to.r &&
+                    move.c === to.c
+            );
 
-        renderBoard();
+        if (!legal) {
+            return;
+        }
 
-    } catch (error) {
+        const target =
+            board[to.r][to.c];
 
-        console.error(
-            "Seat claim failed:",
-            error
-        );
-    }
-}
+        /*
+         * Clone the piece rather than mutating the old
+         * board object.
+         */
+        let movingPiece = {
+            ...piece,
+            moved: true
+        };
 
-/* =========================================================
-   ROOM CREATION
-========================================================= */
+        /*
+         * Capture.
+         */
+        board[to.r][to.c] = movingPiece;
+        board[from.r][from.c] = null;
 
-function generateRoomCode() {
+        /*
+         * FFA automatic queen promotion.
+         */
+        if (
+            movingPiece.type === 'pawn' &&
+            shouldPromote(movingPiece, to)
+        ) {
+            board[to.r][to.c] =
+                promotePawn(movingPiece);
+        }
 
-    return Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase();
-}
-
-async function createRoom(
-    botCount
-) {
-
-    if (creatingRoom) {
-        return;
-    }
-
-    creatingRoom = true;
-
-    const button =
-        document.getElementById(
-            "btn-confirm-create"
-        );
-
-    button.classList.add(
-        "disabled-button"
-    );
-
-    setStatus(
-        "Creating room..."
-    );
-
-    try {
-
-        let created = false;
-        let code = null;
-
-        for (
-            let attempt = 0;
-            attempt < 10;
-            attempt++
+        /*
+         * Eliminate a king.
+         *
+         * This matches the simplified implementation of your
+         * existing game: the player's remaining army becomes
+         * dead/grey.
+         */
+        if (
+            target &&
+            target.player !== 'gray' &&
+            target.type === 'king'
         ) {
 
-            const candidate =
-                generateRoomCode();
+            const eliminatedPlayer =
+                target.player;
 
-            const ref =
-                database.ref(
-                    "rooms/" +
-                    candidate
-                );
-
-            const existing =
-                await ref.once(
-                    "value"
-                );
-
-            if (
-                existing.exists()
-            ) {
-                continue;
+            if (!data.eliminated) {
+                data.eliminated = {};
             }
 
+            data.eliminated[
+                eliminatedPlayer
+            ] = true;
+
             /*
-             * Red is always the creator.
-             *
-             * Bots fill:
-             *
-             * 1 bot = Blue
-             * 2 bots = Blue + Yellow
-             * 3 bots = Blue + Yellow + Green
+             * Turn all remaining pieces belonging to the
+             * eliminated player grey.
              */
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
 
-            const seats = {
-                red: userId,
-                blue: null,
-                yellow: null,
-                green: null
-            };
+                    const p = board[r][c];
 
-            const bots = {
+                    if (
+                        p &&
+                        p.player === eliminatedPlayer
+                    ) {
+                        board[r][c] = {
+                            ...p,
+                            player: 'gray',
+                            dead: true
+                        };
+                    }
+                }
+            }
+        }
+
+        /*
+         * Advance clockwise.
+         */
+        let nextIndex =
+            data.currentPlayerIdx;
+
+        for (let i = 0; i < 4; i++) {
+
+            nextIndex =
+                (nextIndex + 1) % 4;
+
+            const nextPlayer =
+                PLAYERS[nextIndex];
+
+            if (
+                !data.eliminated ||
+                !data.eliminated[nextPlayer]
+            ) {
+                break;
+            }
+        }
+
+        data.boardStr =
+            JSON.stringify(board);
+
+        data.currentPlayerIdx =
+            nextIndex;
+
+        data.lastMove = {
+            from,
+            to,
+            player: currentPlayer,
+            timestamp: Date.now(),
+            promotion:
+                movingPiece.type === 'pawn' &&
+                shouldPromote(movingPiece, to),
+            capture: !!target
+        };
+
+        return data;
+
+    }, (error, committed) => {
+
+        if (error || !committed) {
+            /*
+             * Allow the bot to retry if Firebase rejected
+             * the transaction.
+             */
+            if (isBot) {
+                lastBotSignature = null;
+            }
+        }
+    });
+}
+
+
+/* ============================================================
+   BOARD RENDERING
+   ============================================================ */
+
+/*
+ * IMPORTANT:
+ * Do not randomly rebuild/animate every piece after every
+ * Firebase update.
+ *
+ * Save the previous board and animate only the piece that
+ * actually moved.
+ */
+
+let previousBoard = null;
+
+
+function boardChangedByMove() {
+
+    if (!previousBoard) {
+        return null;
+    }
+
+    for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+
+            const oldPiece =
+                previousBoard[r][c];
+
+            const newPiece =
+                localState.board[r][c];
+
+            if (
+                oldPiece &&
+                !newPiece
+            ) {
+                return {
+                    type: 'from',
+                    r,
+                    c
+                };
+            }
+
+            if (
+                !oldPiece &&
+                newPiece
+            ) {
+                return {
+                    type: 'to',
+                    r,
+                    c
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
+
+/*
+ * Call this at the beginning of your existing renderBoard()
+ * and use the returned object to add animation classes.
+ */
+function getLastMoveAnimation() {
+
+    const move =
+        localState.lastMove;
+
+    if (!move) return null;
+
+    return {
+        from: move.from,
+        to: move.to,
+        capture: !!move.capture,
+        promotion: !!move.promotion
+    };
+}
+
+
+/* ============================================================
+   PROMOTION DISPLAY
+   ============================================================ */
+
+/*
+ * If your piece renderer uses something like:
+ *
+ * getPieceSymbol(piece)
+ *
+ * use this version.
+ */
+
+function getPieceSymbol(piece) {
+
+    if (!piece) return '';
+
+    const symbols = {
+
+        red: {
+            king: '♔',
+            queen: '♕',
+            rook: '♖',
+            bishop: '♗',
+            knight: '♘',
+            pawn: '♙'
+        },
+
+        blue: {
+            king: '♚',
+            queen: '♛',
+            rook: '♜',
+            bishop: '♝',
+            knight: '♞',
+            pawn: '♟'
+        },
+
+        yellow: {
+            king: '♔',
+            queen: '♕',
+            rook: '♖',
+            bishop: '♗',
+            knight: '♘',
+            pawn: '♙'
+        },
+
+        green: {
+            king: '♚',
+            queen: '♛',
+            rook: '♜',
+            bishop: '♝',
+            knight: '♞',
+            pawn: '♟'
+        },
+
+        gray: {
+            king: '♚',
+            queen: '♛',
+            rook: '♜',
+            bishop: '♝',
+            knight: '♞',
+            pawn: '♟'
+        }
+    };
+
+    return (
+        symbols[piece.player]?.[piece.type]
+        || ''
+    );
+}
+
+
+/* ============================================================
+   FIREBASE ROOM SYNC
+   ============================================================ */
+
+function subscribeToRoom(code) {
+
+    roomRef =
+        database.ref('rooms/' + code);
+
+    roomRef.on('value', snapshot => {
+
+        const data = snapshot.val();
+
+        if (!data) {
+            return;
+        }
+
+        const oldBoard =
+            localState.board
+                ? cloneBoard(localState.board)
+                : null;
+
+        localState.board =
+            JSON.parse(data.boardStr);
+
+        localState.currentPlayerIdx =
+            data.currentPlayerIdx ?? 0;
+
+        localState.eliminated =
+            data.eliminated || {
                 red: false,
                 blue: false,
                 yellow: false,
                 green: false
             };
 
-            for (
-                let i = 0;
-                i < botCount;
-                i++
-            ) {
-
-                const seat =
-                    BOT_SEATS[i];
-
-                seats[seat] =
-                    "BOT";
-
-                bots[seat] =
-                    true;
-            }
-
-            await ref.set({
-
-                boardStr:
-                    JSON.stringify(
-                        buildInitialBoard()
-                    ),
-
-                currentPlayerIdx: 0,
-
-                eliminated: {
-                    red: false,
-                    blue: false,
-                    yellow: false,
-                    green: false
-                },
-
-                seats,
-
-                bots,
-
-                lastMove: null
-
-            });
-
-            roomCode =
-                candidate;
-
-            roomRef =
-                ref;
-
-            created = true;
-
-            break;
-        }
-
-        if (!created) {
-            throw new Error(
-                "Could not create room."
-            );
-        }
-
-        localState.mySeat =
-            "red";
-
-        localState.boardRotation =
-            0;
-
-        localState.manualRotation =
-            false;
-
-        roomBadge.textContent =
-            "Room: " + roomCode;
-
-        lobbyModal.classList.add(
-            "hidden"
-        );
-
-        subscribeToRoom(
-            roomCode
-        );
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-        setStatus(
-            "Could not create room.",
-            true
-        );
-
-    } finally {
-
-        creatingRoom = false;
-
-        button.classList.remove(
-            "disabled-button"
-        );
-    }
-}
-
-/* =========================================================
-   JOIN
-========================================================= */
-
-async function joinRoom() {
-
-    if (joiningRoom) {
-        return;
-    }
-
-    const code =
-        roomInput.value
-            .trim()
-            .toUpperCase();
-
-    if (
-        !/^[A-Z0-9]{6}$/.test(code)
-    ) {
-
-        setStatus(
-            "Enter a valid 6-character room code.",
-            true
-        );
-
-        return;
-    }
-
-    joiningRoom = true;
-
-    const button =
-        document.getElementById(
-            "btn-join-room"
-        );
-
-    button.classList.add(
-        "disabled-button"
-    );
-
-    setStatus(
-        "Connecting..."
-    );
-
-    try {
-
-        const ref =
-            database.ref(
-                "rooms/" + code
-            );
-
-        const snapshot =
-            await ref.once(
-                "value"
-            );
-
-        if (
-            !snapshot.exists()
-        ) {
-
-            setStatus(
-                "Room not found.",
-                true
-            );
-
-            return;
-        }
-
-        roomCode =
-            code;
-
-        roomRef =
-            ref;
-
-        roomBadge.textContent =
-            "Room: " + code;
-
-        lobbyModal.classList.add(
-            "hidden"
-        );
-
-        subscribeToRoom(
-            code
-        );
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-        setStatus(
-            "Could not connect to room.",
-            true
-        );
-
-    } finally {
-
-        joiningRoom = false;
-
-        button.classList.remove(
-            "disabled-button"
-        );
-    }
-}
-
-/* =========================================================
-   SUBSCRIBE
-========================================================= */
-
-function subscribeToRoom(
-    code
-) {
-
-    if (
-        roomListener &&
-        roomRef
-    ) {
-
-        roomRef.off(
-            "value",
-            roomListener
-        );
-    }
-
-    roomRef =
-        database.ref(
-            "rooms/" + code
-        );
-
-    roomListener =
-        snapshot => {
-
-            const data =
-                snapshot.val();
-
-            if (!data) {
-                return;
-            }
-
-            let board;
-
-            try {
-
-                board =
-                    JSON.parse(
-                        data.boardStr
-                    );
-
-            } catch {
-
-                return;
-            }
-
-            localState.board =
-                board;
-
-            localState.currentPlayerIdx =
-                Number(
-                    data.currentPlayerIdx || 0
-                );
-
-            localState.eliminated = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...(data.eliminated || {})
-            };
-
-            localState.seats = {
-                red: null,
-                blue: null,
-                yellow: null,
-                green: null,
-                ...(data.seats || {})
-            };
-
-            localState.bots = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...(data.bots || {})
-            };
-
-            localState.lastMove =
-                data.lastMove || null;
-
-            const mySeat =
-                PLAYERS.find(
+        localState.seats =
+            data.seats || {};
+
+        localState.bots =
+            data.bots || {};
+
+        localState.hostId =
+            data.hostId || null;
+
+        localState.lastMove =
+            data.lastMove || null;
+
+        /*
+         * Only set the board orientation when the player's
+         * seat actually changes. This stops remote moves from
+         * causing the board to jump around.
+         */
+        const foundSeat =
+            Object.keys(localState.seats)
+                .find(
                     seat =>
-                        localState.seats[seat] ===
-                        userId
+                        localState.seats[seat] === userId
                 );
-
-            if (mySeat) {
-
-                localState.mySeat =
-                    mySeat;
-
-                if (
-                    !localState.manualRotation
-                ) {
-
-                    localState.boardRotation =
-                        SEAT_ROTATIONS[
-                            mySeat
-                        ];
-                }
-
-            } else {
-
-                localState.mySeat =
-                    null;
-            }
-
-            /*
-             * Clear selection when it is no longer
-             * our turn.
-             */
-
-            const active =
-                PLAYERS[
-                    localState.currentPlayerIdx
-                ];
-
-            if (
-                localState.mySeat !== active
-            ) {
-
-                localState.selectedSquare =
-                    null;
-
-                localState.validMoves =
-                    [];
-            }
-
-            renderBoard();
-
-            /*
-             * This is what actually makes bots work.
-             *
-             * Only Red/creator runs the bot.
-             */
-
-            scheduleBot();
-        };
-
-    roomRef.on(
-        "value",
-        roomListener
-    );
-}
-
-/* =========================================================
-   CREATE SCREEN
-========================================================= */
-
-document
-    .getElementById(
-        "btn-create-room"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            lobbyMain.classList.add(
-                "hidden"
-            );
-
-            botSelection.classList.remove(
-                "hidden"
-            );
-
-            setStatus("");
-        }
-    );
-
-document
-    .getElementById(
-        "back-to-lobby"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            botSelection.classList.add(
-                "hidden"
-            );
-
-            lobbyMain.classList.remove(
-                "hidden"
-            );
-
-            setStatus("");
-        }
-    );
-
-/* =========================================================
-   BOT COUNT PREVIEW
-========================================================= */
-
-function updateBotPreview() {
-
-    const selected =
-        document.querySelector(
-            'input[name="bot-count"]:checked'
-        );
-
-    const count =
-        Number(
-            selected?.value || 0
-        );
-
-    const preview = {
-        blue:
-            document.getElementById(
-                "preview-blue"
-            ),
-
-        yellow:
-            document.getElementById(
-                "preview-yellow"
-            ),
-
-        green:
-            document.getElementById(
-                "preview-green"
-            )
-    };
-
-    BOT_SEATS.forEach(
-        (seat, index) => {
-
-            preview[seat].textContent =
-                index < count
-                    ? "Bot"
-                    : "Open";
-
-            preview[seat].className =
-                index < count
-                    ? "bot-seat"
-                    : "";
-        }
-    );
-}
-
-document
-    .querySelectorAll(
-        'input[name="bot-count"]'
-    )
-    .forEach(
-        radio => {
-
-            radio.addEventListener(
-                "change",
-                updateBotPreview
-            );
-        }
-    );
-
-document
-    .getElementById(
-        "btn-confirm-create"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            const selected =
-                document.querySelector(
-                    'input[name="bot-count"]:checked'
-                );
-
-            const count =
-                Number(
-                    selected?.value || 0
-                );
-
-            createRoom(
-                Math.max(
-                    0,
-                    Math.min(
-                        3,
-                        count
-                    )
-                )
-            );
-        }
-    );
-
-/* =========================================================
-   JOIN INPUT
-========================================================= */
-
-roomInput.addEventListener(
-    "input",
-    () => {
-
-        roomInput.value =
-            roomInput.value
-                .replace(
-                    /[^a-zA-Z0-9]/g,
-                    ""
-                )
-                .toUpperCase()
-                .substring(0, 6);
-    }
-);
-
-roomInput.addEventListener(
-    "keydown",
-    event => {
 
         if (
-            event.key === "Enter"
+            foundSeat &&
+            localState.mySeat !== foundSeat
         ) {
-            joinRoom();
-        }
-    }
-);
 
-/* =========================================================
-   SEAT BUTTONS
-========================================================= */
-
-document
-    .querySelectorAll(
-        ".seat-button"
-    )
-    .forEach(
-        button => {
-
-            button.addEventListener(
-                "click",
-                event => {
-
-                    event.preventDefault();
-
-                    claimSeat(
-                        button.dataset.seat
-                    );
-                }
-            );
-        }
-    );
-
-/* =========================================================
-   SHARE
-========================================================= */
-
-document
-    .getElementById(
-        "share-btn"
-    )
-    .addEventListener(
-        "click",
-        async () => {
-
-            if (!roomCode) {
-                return;
-            }
-
-            const text =
-                `Join my 4-Player Chess game!\nRoom Code: ${roomCode}`;
-
-            try {
-
-                if (
-                    navigator.share
-                ) {
-
-                    await navigator.share({
-                        title:
-                            "4-Player Chess",
-                        text
-                    });
-
-                    return;
-                }
-
-            } catch {}
-
-            try {
-
-                await navigator.clipboard.writeText(
-                    roomCode
-                );
-
-                alert(
-                    `Room code copied: ${roomCode}`
-                );
-
-            } catch {
-
-                alert(
-                    `Room Code: ${roomCode}`
-                );
-            }
-        }
-    );
-
-/* =========================================================
-   ROTATE
-========================================================= */
-
-document
-    .getElementById(
-        "rotate-btn"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            localState.manualRotation =
-                true;
+            localState.mySeat =
+                foundSeat;
 
             localState.boardRotation =
-                (
-                    localState.boardRotation +
-                    90
-                ) % 360;
-
-            renderBoard();
+                SEAT_ROTATIONS[foundSeat];
         }
-    );
 
-/* =========================================================
-   UI
-========================================================= */
+        renderBoard();
 
-function updateUI() {
+        /*
+         * Schedule exactly one bot turn.
+         */
+        checkAndTriggerBotMove();
 
-    const active =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
-
-    roleIndicator.textContent =
-        localState.mySeat
-            ? `Seat: ${PLAYER_NAMES[localState.mySeat]}`
-            : "Seat: Spectator";
-
-    PLAYERS.forEach(
-        player => {
-
-            const card =
-                document.getElementById(
-                    `card-${player}`
-                );
-
-            const button =
-                document.getElementById(
-                    `seat-btn-${player}`
-                );
-
-            const name =
-                document.getElementById(
-                    `name-${player}`
-                );
-
-            card.className =
-                `player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 transition-all ${
-                    active === player
-                        ? `active-${player}`
-                        : "border-transparent"
-                }`;
-
-            /*
-             * Bot
-             */
-
-            if (
-                localState.bots[player]
-            ) {
-
-                button.className =
-                    "hidden";
-
-                name.textContent =
-                    `${PLAYER_NAMES[player]} (Bot)`;
-
-                return;
-            }
-
-            /*
-             * Human
-             */
-
-            if (
-                localState.seats[player]
-            ) {
-
-                button.className =
-                    "hidden";
-
-                name.textContent =
-                    `${PLAYER_NAMES[player]} (${
-                        localState.seats[player] === userId
-                            ? "You"
-                            : "Player"
-                    })`;
-
-                return;
-            }
-
-            /*
-             * Open
-             */
-
-            button.className =
-                "seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200";
-
-            name.textContent =
-                `${PLAYER_NAMES[player]} (Open)`;
-        }
-    );
+        previousBoard = oldBoard;
+    });
 }
 
-/* =========================================================
-   INITIAL
-========================================================= */
 
-lucide.createIcons();
+/* ============================================================
+   ATOMIC SEAT CLAIMING
+   ============================================================ */
 
-localState.board =
-    buildInitialBoard();
+window.claimSeat = function(seatColor) {
 
-renderBoard();
+    if (!roomRef) return;
 
-updateBotPreview();
+    /*
+     * Never allow somebody to claim a bot seat.
+     */
+    roomRef
+        .child('seats')
+        .child(seatColor)
+        .transaction(current => {
+
+            if (
+                current === null ||
+                current === undefined
+            ) {
+                return userId;
+            }
+
+            /*
+             * Occupied or BOT.
+             */
+            return;
+        }, (error, committed) => {
+
+            if (error || !committed) {
+                return;
+            }
+
+            /*
+             * Human seat is no longer a bot.
+             */
+            roomRef
+                .child('bots')
+                .child(seatColor)
+                .set(false);
+
+            localState.mySeat =
+                seatColor;
+
+            localState.boardRotation =
+                SEAT_ROTATIONS[seatColor];
+
+            renderBoard();
+        });
+};
+
+
+/* ============================================================
+   CREATE ROOM WITH BOT COUNT
+   ============================================================ */
+
+let selectedBotCount = 0;
+
+
+/*
+ * Add this modal to your HTML:
+ *
+ * <div id="bot-setup-modal" class="hidden ...">
+ *     ...
+ * </div>
+ *
+ * The JavaScript below creates it automatically so you don't
+ * have to manually rebuild the modal.
+ */
+
+function createBotSetupModal() {
+
+    if (document.getElementById('bot-setup-modal')) {
+        return;
+    }
+
+    const modal =
+        document.createElement('div');
+
+    modal.id = 'bot-setup-modal';
+
+    modal.className =
+        'fixed inset-0 z-[100] hidden items-center justify-center bg-black/70 p-4';
+
+    modal.innerHTML = `
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 p-6 text-white shadow-2xl">
+
+            <h2 class="mb-2 text-2xl font-bold">
+                Create Game
+            </h2>
+
+            <p class="mb-5 text-sm text-slate-400">
+                Choose how many bot players should be added.
+            </p>
+
+            <div class="grid grid-cols-4 gap-2">
+
+                <button type="button"
+                    class="bot-count-option rounded-xl border border-slate-700 bg-slate-800 p-4 hover:bg-slate-700"
+                    data-bots="0">
+                    <div class="text-2xl font-bold">0</div>
+                    <div class="text-xs text-slate-400">Bots</div>
+                </button>
+
+                <button type="button"
+                    class="bot-count-option rounded-xl border border-slate-700 bg-slate-800 p-4 hover:bg-slate-700"
+                    data-bots="1">
+                    <div class="text-2xl font-bold">1</div>
+                    <div class="text-xs text-slate-400">Bot</div>
+                </button>
+
+                <button type="button"
+                    class="bot-count-option rounded-xl border border-slate-700 bg-slate-800 p-4 hover:bg-slate-700"
+                    data-bots="2">
+                    <div class="text-2xl font-bold">2</div>
+                    <div class="text-xs text-slate-400">Bots</div>
+                </button>
+
+                <button type="button"
+                    class="bot-count-option rounded-xl border border-slate-700 bg-slate-800 p-4 hover:bg-slate-700"
+                    data-bots="3">
+                    <div class="text-2xl font-bold">3</div>
+                    <div class="text-xs text-slate-400">Bots</div>
+                </button>
+
+            </div>
+
+            <div class="mt-6 flex gap-2">
+
+                <button type="button"
+                    id="cancel-bot-setup"
+                    class="flex-1 rounded-xl bg-slate-700 px-4 py-3 font-semibold">
+                    Cancel
+                </button>
+
+                <button type="button"
+                    id="confirm-bot-setup"
+                    class="flex-1 rounded-xl bg-blue-600 px-4 py-3 font-semibold">
+                    Create Game
+                </button>
+
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const options =
+        modal.querySelectorAll(
+            '.bot-count-option'
+        );
+
+    options.forEach(button => {
+
+        button.addEventListener(
+            'click',
+            () => {
+
+                selectedBotCount =
+                    Number(
+                        button.dataset.bots
+                    );
+
+                options.forEach(
+                    other =>
+                        other.classList.remove(
+                            'ring-2',
+                            'ring-blue-400'
+                        )
+                );
+
+                button.classList.add(
+                    'ring-2',
+                    'ring-blue-400'
+                );
+            }
+        );
+    });
+
+    modal.querySelector(
+        '#cancel-bot-setup'
+    ).addEventListener(
+        'click',
+        () => closeBotSetup()
+    );
+
+    modal.querySelector(
+        '#confirm-bot-setup'
+    ).addEventListener(
+        'click',
+        () => {
+
+            closeBotSetup();
+
+            createRoomWithBots(
+                selectedBotCount
+            );
+        }
+    );
+
+    options[0].click();
+}
+
+
+function openBotSetup() {
+
+    createBotSetupModal();
+
+    const modal =
+        document.getElementById(
+            'bot-setup-modal'
+        );
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+
+function closeBotSetup() {
+
+    const modal =
+        document.getElementById(
+            'bot-setup-modal'
+        );
+
+    if (!modal) return;
+
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+
+/* Replace your old "Create New Room" click handler
+   with this. */
+
+document
+    .getElementById('create-room-btn')
+    ?.addEventListener(
+        'click',
+        openBotSetup
+    );
+
+
+/* ============================================================
+   CREATE THE ACTUAL ROOM
+   ============================================================ */
+
+function createRoomWithBots(botCount) {
+
+    const code =
+        Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+    const initialBoard =
+        buildInitialBoard();
+
+    const seats = {
+        red: userId,
+        blue: null,
+        yellow: null,
+        green: null
+    };
+
+    const bots = {
+        red: false,
+        blue: false,
+        yellow: false,
+        green: false
+    };
+
+    /*
+     * Red is always the creator.
+     *
+     * Fill bot seats clockwise after Red.
+     */
+    const botSeats = [
+        'blue',
+        'yellow',
+        'green'
+    ];
+
+    for (
+        let i = 0;
+        i < botCount;
+        i++
+    ) {
+
+        const seat =
+            botSeats[i];
+
+        seats[seat] = 'BOT';
+        bots[seat] = true;
+    }
+
+    roomCode = code;
+
+    roomRef =
+        database.ref('rooms/' + code);
+
+    roomRef.set({
+
+        /*
+         * KEEP YOUR EXISTING FIREBASE CONFIG EXACTLY
+         * AS IT WAS.
+         */
+
+        boardStr:
+            JSON.stringify(initialBoard),
+
+        currentPlayerIdx: 0,
+
+        eliminated: {
+            red: false,
+            blue: false,
+            yellow: false,
+            green: false
+        },
+
+        seats,
+
+        bots,
+
+        /*
+         * Host is the ONLY client allowed to control bots.
+         */
+        hostId: userId,
+
+        lastMove: null
+
+    }).then(() => {
+
+        localState.mySeat = 'red';
+
+        localState.boardRotation =
+            SEAT_ROTATIONS.red;
+
+        localState.hostId =
+            userId;
+
+        subscribeToRoom(code);
+
+        /*
+         * Update your existing room-code display.
+         */
+        const roomDisplay =
+            document.getElementById(
+                'room-code-display'
+            );
+
+        if (roomDisplay) {
+            roomDisplay.textContent = code;
+        }
+
+    });
+}
+
+
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
+document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+
+        /*
+         * If your old Create button has inline onclick
+         * behavior, remove that old handler.
+         */
+        createBotSetupModal();
+
+    }
+);
 </script>
-
-</body>
-</html>
