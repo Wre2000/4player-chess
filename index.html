@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>4-Player Chess Online (iPad & Tablet Edition)</title>
-    <!-- Tailwind CSS for styling -->
+    <title>4-Player Chess Online (iPad Edition)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -22,18 +22,22 @@
     </script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Firebase SDKs (Compat version for pure index.html support) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
             overflow-x: hidden;
         }
 
-        /* 14x14 Grid for 4-Player Chess layout */
         .board-grid {
             display: grid;
             grid-template-columns: repeat(14, minmax(0, 1fr));
@@ -52,14 +56,12 @@
             transition: background-color 0.15s ease;
         }
 
-        /* Square styling */
         .square-light { background-color: #eeeed2; }
         .square-dark { background-color: #769656; }
         .square-out-of-bounds { background-color: transparent; pointer-events: none; border: none !important; }
         
         .square-selected { background-color: #baca44 !important; }
         .square-last-move { background-color: rgba(245, 203, 66, 0.5) !important; }
-        .square-in-check { background-color: #f87171 !important; animation: pulse 1.2s infinite; }
 
         .move-dot {
             width: 32%;
@@ -103,15 +105,11 @@
         .active-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); border-color: #3b82f6 !important; }
         .active-yellow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.6); border-color: #eab308 !important; }
         .active-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.6); border-color: #22c55e !important; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 4px; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between items-center p-2 sm:p-4 text-slate-100">
 
-    <!-- Lobby / Room Selection Modal -->
+    <!-- Room Selection Modal -->
     <div id="lobby-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl space-y-6">
             <div class="space-y-2">
@@ -121,7 +119,7 @@
                 <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
                     4-Player Chess Online
                 </h2>
-                <p class="text-xs text-slate-400">Play live real-time 4-player chess across multiple iPads & devices</p>
+                <p class="text-xs text-slate-400">Play live 4-player chess with your friends on iPad!</p>
             </div>
 
             <div class="space-y-3">
@@ -136,18 +134,16 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <input type="text" id="input-room-code" placeholder="Enter 6-letter Code" maxlength="6" class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
+                    <input type="text" id="input-room-code" placeholder="ENTER ROOM CODE" maxlength="6" class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
                     <button id="btn-join-room" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
                         Join
                     </button>
                 </div>
             </div>
-
-            <div id="lobby-error" class="text-xs text-red-400 font-semibold hidden"></div>
         </div>
     </div>
 
-    <!-- Top Header Bar -->
+    <!-- Header Bar -->
     <header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
         <div class="flex items-center space-x-3">
             <div class="p-2 bg-indigo-600 rounded-xl shadow-md">
@@ -163,13 +159,13 @@
         </div>
 
         <div class="flex items-center space-x-2">
-            <button id="share-btn" title="Share Room Link" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
+            <button id="share-btn" title="Share Room Code" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
                 <i data-lucide="share-2" class="w-4 h-4"></i>
                 <span class="hidden sm:inline">Share</span>
             </button>
             <button id="rotate-btn" title="Rotate Board" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
                 <i data-lucide="rotate-cw" class="w-4 h-4"></i>
-                <span class="hidden md:inline">Orient</span>
+                <span class="hidden md:inline">Rotate</span>
             </button>
             <button id="toggle-bot-btn" title="Add Bots to Empty Seats" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
                 <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i>
@@ -178,12 +174,10 @@
         </div>
     </header>
 
-    <!-- Main Game Container -->
+    <!-- Main Game Section -->
     <main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
-        
-        <!-- Left Side: Player Seats (Yellow / Blue) -->
+        <!-- Left Side Players -->
         <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
-            <!-- Yellow Player (Top) -->
             <div id="card-yellow" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="flex items-center gap-2">
@@ -192,10 +186,8 @@
                     </div>
                     <button onclick="claimSeat('yellow')" id="seat-btn-yellow" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
                 </div>
-                <div id="captured-yellow" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
             </div>
 
-            <!-- Blue Player (Left) -->
             <div id="card-blue" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="flex items-center gap-2">
@@ -204,26 +196,17 @@
                     </div>
                     <button onclick="claimSeat('blue')" id="seat-btn-blue" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
                 </div>
-                <div id="captured-blue" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
             </div>
         </div>
 
-        <!-- Center Container: Chessboard -->
+        <!-- Center Board -->
         <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
-            <div id="board" class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
-                <!-- Squares injected dynamically -->
-            </div>
-
-            <!-- Turn Banner Overlay -->
-            <div id="notification-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-700 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-xl backdrop-blur-md pointer-events-none transition-all duration-300 z-20">
-                Banner Notice
-            </div>
+            <div id="board" class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900"></div>
         </div>
 
-        <!-- Right Side: Player Seats (Green / Red) & Move History -->
+        <!-- Right Side Players -->
         <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
             <div class="flex flex-row lg:flex-col gap-2">
-                <!-- Green Player (Right) -->
                 <div id="card-green" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
                     <div class="flex items-center justify-between mb-1.5">
                         <div class="flex items-center gap-2">
@@ -232,10 +215,8 @@
                         </div>
                         <button onclick="claimSeat('green')" id="seat-btn-green" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
                     </div>
-                    <div id="captured-green" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
                 </div>
 
-                <!-- Red Player (Bottom) -->
                 <div id="card-red" class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
                     <div class="flex items-center justify-between mb-1.5">
                         <div class="flex items-center gap-2">
@@ -244,89 +225,35 @@
                         </div>
                         <button onclick="claimSeat('red')" id="seat-btn-red" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Claim</button>
                     </div>
-                    <div id="captured-red" class="flex flex-wrap gap-0.5 min-h-[20px] bg-slate-900/40 p-1 rounded-lg text-xs"></div>
-                </div>
-            </div>
-
-            <!-- Move History & Log -->
-            <div class="glass-panel p-3 rounded-2xl flex-1 max-h-36 lg:max-h-48 flex flex-col">
-                <div class="flex justify-between items-center pb-1.5 border-b border-slate-700 mb-2">
-                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-400"></i> Move Log
-                    </span>
-                    <span id="move-count" class="text-[11px] text-slate-400">Live Sync</span>
-                </div>
-                <div id="move-log" class="flex-1 overflow-y-auto space-y-1 text-xs pr-1 font-mono">
-                    <div class="text-slate-500 italic text-center py-2">Join a room to begin!</div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Pawn Promotion Modal -->
-    <div id="promotion-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="glass-panel border-2 border-indigo-500/50 rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-1">Promote Pawn</h3>
-            <p class="text-xs text-slate-400 mb-4">Choose a piece to upgrade your pawn</p>
-            <div id="promotion-options" class="grid grid-cols-2 gap-3"></div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <script>
         lucide.createIcons();
 
-        /* ==========================================================================
-           FIREBASE INITIALIZATION & MANDATORY RULE COMPLIANCE
-           ========================================================================== */
-        const appId = typeof __app_id !== 'undefined' ? __app_id : '4player-chess-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : { apiKey: "demo", authDomain: "demo.firebaseapp.com", projectId: "demo" };
+        // --- Your Exact Firebase Config ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyBLIXmflLS3vfSVTZDJn15kLQg68ioEafQ",
+          authDomain: "chess4p.firebaseapp.com",
+          databaseURL: "https://chess4p-default-rtdb.firebaseio.com",
+          projectId: "chess4p",
+          storageBucket: "chess4p.firebasestorage.app",
+          messagingSenderId: "907300249071",
+          appId: "1:907300249071:web:17572edd070d1921666a1a"
+        };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        let currentUser = null;
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
         let roomCode = null;
-        let roomDocRef = null;
-        let unsubscribeRoom = null;
+        let roomRef = null;
 
-        // Web Audio Synthesizer
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSound(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            if (type === 'move') {
-                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.08);
-            } else if (type === 'capture') {
-                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.12);
-                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.12);
-            }
-        }
-
-        /* ==========================================================================
-           GAME CONSTANTS & BOARD LOGIC
-           ========================================================================== */
         const BOARD_SIZE = 14;
         const PLAYERS = ['red', 'blue', 'yellow', 'green'];
         const PLAYER_NAMES = { red: 'Red', blue: 'Blue', yellow: 'Yellow', green: 'Green' };
-        
         const SEAT_ROTATIONS = { red: 0, blue: 270, yellow: 180, green: 90 };
 
         const PIECE_COLORS = {
@@ -353,7 +280,6 @@
             selectedSquare: null,
             validMoves: [],
             lastMove: null,
-            capturedPieces: { red: [], blue: [], yellow: [], green: [] },
             boardRotation: 0,
             mySeat: null
         };
@@ -369,9 +295,7 @@
 
         function getPieceSVG(type, colorKey) {
             const colors = PIECE_COLORS[colorKey] || PIECE_COLORS.red;
-            const stroke = colors.stroke;
-            const fill = colors.fill;
-            const accent = colors.accent;
+            const stroke = colors.stroke; const fill = colors.fill; const accent = colors.accent;
 
             const paths = {
                 p: `<path d="M 12 28 C 12 28 14 20 12 16 C 10 13 11 9 16 8 C 21 9 22 13 20 16 C 18 20 20 28 20 28 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
@@ -388,7 +312,6 @@
                 k: `<path d="M 8 29 L 24 29 L 22 17 L 16 14 L 10 17 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
                     <line x1="16" y1="6" x2="16" y2="13" stroke="${accent}" stroke-width="2.5"/>`
             };
-
             return `<svg viewBox="0 0 32 32" class="piece-svg">${paths[type] || ''}</svg>`;
         }
 
@@ -417,8 +340,7 @@
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
                     const squareEl = document.createElement('div');
-                    squareEl.dataset.row = r;
-                    squareEl.dataset.col = c;
+                    squareEl.dataset.row = r; squareEl.dataset.col = c;
 
                     if (!isValidSquare(r, c)) {
                         squareEl.className = 'square square-out-of-bounds';
@@ -468,8 +390,6 @@
 
         function handleSquareClick(r, c) {
             const activePlayer = PLAYERS[localState.currentPlayerIdx];
-
-            // Verify if user is sitting in the active seat
             if (localState.mySeat !== activePlayer) return;
 
             if (localState.selectedSquare) {
@@ -490,12 +410,11 @@
                 localState.selectedSquare = null;
                 localState.validMoves = [];
             }
-
             renderBoard();
         }
 
-        async function dispatchMove(from, to) {
-            if (!roomDocRef) return;
+        function dispatchMove(from, to) {
+            if (!roomRef) return;
 
             const piece = localState.board[from.r][from.c];
             const target = localState.board[to.r][to.c];
@@ -505,25 +424,19 @@
             newBoard[from.r][from.c] = null;
             piece.moved = true;
 
-            const newCaptured = JSON.parse(JSON.stringify(localState.capturedPieces));
             const newEliminated = { ...localState.eliminated };
 
-            if (target) {
-                newCaptured[piece.player].push(target);
-                if (target.type === 'k') {
-                    newEliminated[target.player] = true;
-                    // Gray out eliminated player's pieces
-                    for (let r = 0; r < 14; r++) {
-                        for (let c = 0; c < 14; c++) {
-                            if (newBoard[r][c] && newBoard[r][c].player === target.player) {
-                                newBoard[r][c].player = 'gray';
-                            }
+            if (target && target.type === 'k') {
+                newEliminated[target.player] = true;
+                for (let r = 0; r < 14; r++) {
+                    for (let c = 0; c < 14; c++) {
+                        if (newBoard[r][c] && newBoard[r][c].player === target.player) {
+                            newBoard[r][c].player = 'gray';
                         }
                     }
                 }
             }
 
-            // Find next active player
             let nextIdx = localState.currentPlayerIdx;
             let iter = 0;
             do {
@@ -531,26 +444,17 @@
                 iter++;
             } while (newEliminated[PLAYERS[nextIdx]] && iter < 4);
 
-            const lastMoveData = { from, to, player: piece.player, captured: !!target };
-
-            try {
-                await updateDoc(roomDocRef, {
-                    boardStr: JSON.stringify(newBoard),
-                    currentPlayerIdx: nextIdx,
-                    eliminated: newEliminated,
-                    capturedPieces: newCaptured,
-                    lastMove: lastMoveData,
-                    updatedAt: Date.now()
-                });
-            } catch (err) {
-                console.error("Move update failed:", err);
-            }
+            roomRef.update({
+                boardStr: JSON.stringify(newBoard),
+                currentPlayerIdx: nextIdx,
+                eliminated: newEliminated,
+                lastMove: { from, to, player: piece.player }
+            });
         }
 
         function checkAndTriggerBotMove() {
             const activePlayer = PLAYERS[localState.currentPlayerIdx];
             if (localState.bots[activePlayer] && !localState.eliminated[activePlayer]) {
-                // Only host or first connected user triggers bot move to avoid duplicates
                 if (localState.mySeat === 'red' || !localState.seats.red) {
                     setTimeout(() => runBotTurn(activePlayer), 600);
                 }
@@ -570,12 +474,10 @@
             }
 
             if (allMoves.length > 0) {
-                // Prioritize captures
                 const captures = allMoves.filter(m => localState.board[m.to.r][m.to.c]);
                 const chosen = captures.length > 0 
                     ? captures[Math.floor(Math.random() * captures.length)] 
                     : allMoves[Math.floor(Math.random() * allMoves.length)];
-
                 dispatchMove(chosen.from, chosen.to);
             }
         }
@@ -607,7 +509,6 @@
                         }
                     }
                     break;
-
                 case 'n':
                     const nOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
                     for (const [dr, dc] of nOffsets) {
@@ -618,16 +519,9 @@
                         }
                     }
                     break;
-
-                case 'b':
-                    moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1]]);
-                    break;
-                case 'r':
-                    moves = getRayMoves(r, c, piece, [[1,0], [-1,0], [0,1], [0,-1]]);
-                    break;
-                case 'q':
-                    moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1], [1,0], [-1,0], [0,1], [0,-1]]);
-                    break;
+                case 'b': moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1]]); break;
+                case 'r': moves = getRayMoves(r, c, piece, [[1,0], [-1,0], [0,1], [0,-1]]); break;
+                case 'q': moves = getRayMoves(r, c, piece, [[1,1], [1,-1], [-1,1], [-1,-1], [1,0], [-1,0], [0,1], [0,-1]]); break;
                 case 'k':
                     for (let dr = -1; dr <= 1; dr++) {
                         for (let dc = -1; dc <= 1; dc++) {
@@ -661,86 +555,53 @@
             return moves;
         }
 
-        async function initAuth() {
-            if (typeof __initial_auth_token !== 'undefined') {
-                const cred = await signInWithCustomToken(auth, __initial_auth_token);
-                currentUser = cred.user;
-            } else {
-                const cred = await signInAnonymously(auth);
-                currentUser = cred.user;
-            }
-        }
-
-        window.claimSeat = async function(seatColor) {
-            if (!roomDocRef || !currentUser) return;
-            try {
-                const updatedSeats = { ...localState.seats, [seatColor]: currentUser.uid };
-                const updatedBots = { ...localState.bots, [seatColor]: false };
-                await updateDoc(roomDocRef, { seats: updatedSeats, bots: updatedBots });
-                
-                localState.mySeat = seatColor;
-                localState.boardRotation = SEAT_ROTATIONS[seatColor];
-                renderBoard();
-            } catch (err) {
-                console.error("Seat claim error:", err);
-            }
+        window.claimSeat = function(seatColor) {
+            if (!roomRef) return;
+            const updatedSeats = { ...localState.seats, [seatColor]: userId };
+            const updatedBots = { ...localState.bots, [seatColor]: false };
+            roomRef.update({ seats: updatedSeats, bots: updatedBots });
+            
+            localState.mySeat = seatColor;
+            localState.boardRotation = SEAT_ROTATIONS[seatColor];
+            renderBoard();
         };
 
         function subscribeToRoom(code) {
-            if (unsubscribeRoom) unsubscribeRoom();
-            
-            // STRICT RULE 1 MANDATORY PATH: /artifacts/{appId}/public/data/{collectionName}
-            roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-
-            unsubscribeRoom = onSnapshot(roomDocRef, (snap) => {
-                if (!snap.exists()) return;
-                const data = snap.data();
+            roomRef = database.ref('rooms/' + code);
+            roomRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
 
                 localState.board = JSON.parse(data.boardStr);
                 localState.currentPlayerIdx = data.currentPlayerIdx;
                 localState.eliminated = data.eliminated;
-                localState.seats = data.seats;
-                localState.bots = data.bots;
-                localState.capturedPieces = data.capturedPieces;
+                localState.seats = data.seats || {};
+                localState.bots = data.bots || {};
+                localState.lastMove = data.lastMove;
 
-                if (data.lastMove) {
-                    if (!localState.lastMove || localState.lastMove.from.r !== data.lastMove.from.r) {
-                        playSound(data.lastMove.captured ? 'capture' : 'move');
-                    }
-                    localState.lastMove = data.lastMove;
-                }
-
-                // Identify player seat
-                if (currentUser) {
-                    const foundSeat = Object.keys(data.seats).find(s => data.seats[s] === currentUser.uid);
-                    if (foundSeat) {
-                        localState.mySeat = foundSeat;
-                        localState.boardRotation = SEAT_ROTATIONS[foundSeat];
-                    }
+                const foundSeat = Object.keys(localState.seats).find(s => localState.seats[s] === userId);
+                if (foundSeat) {
+                    localState.mySeat = foundSeat;
+                    localState.boardRotation = SEAT_ROTATIONS[foundSeat];
                 }
 
                 renderBoard();
                 checkAndTriggerBotMove();
-            }, (err) => console.error("Firestore listener error:", err));
+            });
         }
 
-        document.getElementById('btn-create-room').addEventListener('click', async () => {
-            await initAuth();
+        document.getElementById('btn-create-room').addEventListener('click', () => {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             roomCode = code;
-
             const initialBoard = buildInitialBoard();
-            // RULE 1: /artifacts/{appId}/public/data/{collectionName}/{documentId}
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
 
-            await setDoc(roomRef, {
+            roomRef = database.ref('rooms/' + code);
+            roomRef.set({
                 boardStr: JSON.stringify(initialBoard),
                 currentPlayerIdx: 0,
                 eliminated: { red: false, blue: false, yellow: false, green: false },
-                seats: { red: currentUser.uid, blue: null, yellow: null, green: null },
-                bots: { red: false, blue: false, yellow: false, green: false },
-                capturedPieces: { red: [], blue: [], yellow: [], green: [] },
-                createdAt: Date.now()
+                seats: { red: userId, blue: null, yellow: null, green: null },
+                bots: { red: false, blue: false, yellow: false, green: false }
             });
 
             document.getElementById('room-badge').innerText = `Room: ${code}`;
@@ -748,10 +609,9 @@
             subscribeToRoom(code);
         });
 
-        document.getElementById('btn-join-room').addEventListener('click', async () => {
+        document.getElementById('btn-join-room').addEventListener('click', () => {
             const input = document.getElementById('input-room-code').value.trim().toUpperCase();
             if (input.length !== 6) return;
-            await initAuth();
             roomCode = input;
             document.getElementById('room-badge').innerText = `Room: ${input}`;
             document.getElementById('lobby-modal').classList.add('hidden');
@@ -769,13 +629,13 @@
             renderBoard();
         });
 
-        document.getElementById('toggle-bot-btn').addEventListener('click', async () => {
-            if (!roomDocRef) return;
+        document.getElementById('toggle-bot-btn').addEventListener('click', () => {
+            if (!roomRef) return;
             const updatedBots = { ...localState.bots };
             PLAYERS.forEach(p => {
                 if (!localState.seats[p]) updatedBots[p] = true;
             });
-            await updateDoc(roomDocRef, { bots: updatedBots });
+            roomRef.update({ bots: updatedBots });
         });
 
         function updateUI() {
@@ -788,7 +648,6 @@
                 const card = document.getElementById(`card-${p}`);
                 const seatBtn = document.getElementById(`seat-btn-${p}`);
                 const nameEl = document.getElementById(`name-${p}`);
-                const capturedContainer = document.getElementById(`captured-${p}`);
 
                 card.className = `player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 transition-all ${
                     p === activePlayer ? `active-${p}` : 'border-transparent'
@@ -796,7 +655,7 @@
 
                 if (localState.seats[p]) {
                     seatBtn.className = 'hidden';
-                    nameEl.innerText = `${PLAYER_NAMES[p]} (${localState.seats[p] === currentUser?.uid ? 'You' : 'Player'})`;
+                    nameEl.innerText = `${PLAYER_NAMES[p]} (${localState.seats[p] === userId ? 'You' : 'Player'})`;
                 } else if (localState.bots[p]) {
                     seatBtn.className = 'hidden';
                     nameEl.innerText = `${PLAYER_NAMES[p]} (Bot)`;
@@ -804,18 +663,9 @@
                     seatBtn.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 transition';
                     nameEl.innerText = `${PLAYER_NAMES[p]} (Open)`;
                 }
-
-                capturedContainer.innerHTML = '';
-                localState.capturedPieces[p].forEach(piece => {
-                    const capSpan = document.createElement('span');
-                    capSpan.className = 'w-4 h-4 inline-block opacity-80';
-                    capSpan.innerHTML = getPieceSVG(piece.type, piece.player);
-                    capturedContainer.appendChild(capSpan);
-                });
             });
         }
 
-        // Initialize Local Board View
         localState.board = buildInitialBoard();
         renderBoard();
     </script>
