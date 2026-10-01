@@ -3,664 +3,351 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
 <title>4-Player Chess Online</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-
-<script>
-tailwind.config = {
-    theme: {
-        extend: {
-            colors: {
-                pRed: '#ef4444',
-                pBlue: '#3b82f6',
-                pYellow: '#eab308',
-                pGreen: '#22c55e'
-            }
-        }
-    }
-};
-</script>
-
 <script src="https://unpkg.com/lucide@latest"></script>
-
-<!-- FIREBASE CONFIG UNCHANGED -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    min-height: 100%;
-}
-
-body {
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #f8fafc;
-    overflow-x: hidden;
-}
-
-button,
-input {
-    -webkit-tap-highlight-color: transparent;
-}
-
-button {
-    touch-action: manipulation;
-}
-
-.board-grid {
-    display: grid;
-    grid-template-columns: repeat(14, minmax(0, 1fr));
-    grid-template-rows: repeat(14, minmax(0, 1fr));
-    aspect-ratio: 1 / 1;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,.7);
-    transition: transform .4s cubic-bezier(.4,0,.2,1);
-    transform-origin: center;
-}
-
-.square {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    cursor: pointer;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.square-light {
-    background-color: #eeeed2;
-}
-
-.square-dark {
-    background-color: #769656;
-}
-
-.square-out-of-bounds {
-    background: transparent;
-    pointer-events: none;
-    border: none !important;
-}
-
-.square-selected {
-    background-color: #baca44 !important;
-}
-
-.square-last-move {
-    background-color: rgba(245,203,66,.5) !important;
-}
-
-.square-check {
-    box-shadow: inset 0 0 0 4px rgba(239,68,68,.8);
-}
-
-.move-dot {
-    width: 30%;
-    height: 30%;
-    background: rgba(0,0,0,.28);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.capture-ring {
-    position: absolute;
-    inset: 4px;
-    border: 4px solid rgba(239,68,68,.75);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.piece-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    position: relative;
-}
-
-.piece-svg {
-    width: 85%;
-    height: 85%;
-    filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
-    pointer-events: none;
-}
-
-.piece-arrive {
-    animation: pieceArrive .24s cubic-bezier(.2,.8,.2,1);
-}
-
-.piece-capture {
-    animation: captureFlash .24s ease-out;
-}
-
-.promotion-piece {
-    animation: promotion .42s cubic-bezier(.2,.8,.2,1);
-}
-
-.promotion-one {
-    position: absolute;
-    right: 7%;
-    bottom: 7%;
-    min-width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: rgba(15,23,42,.9);
-    color: white;
-    font-size: 9px;
-    font-weight: 900;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(255,255,255,.5);
-}
-
-@keyframes pieceArrive {
-    0% {
-        opacity: .25;
-        transform: scale(.72);
-    }
-    65% {
-        opacity: 1;
-        transform: scale(1.08);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes promotion {
-    0% {
-        opacity: .2;
-        transform: scale(.55) rotate(-8deg);
-    }
-    60% {
-        opacity: 1;
-        transform: scale(1.12) rotate(2deg);
-    }
-    100% {
-        transform: scale(1) rotate(0);
-    }
-}
-
-@keyframes captureFlash {
-    0% {
-        box-shadow: inset 0 0 0 rgba(255,255,255,0);
-    }
-    40% {
-        box-shadow: inset 0 0 45px rgba(255,255,255,.28);
-    }
-    100% {
-        box-shadow: inset 0 0 0 rgba(255,255,255,0);
-    }
-}
-
-.glass-panel {
-    background: rgba(30,41,59,.85);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,.1);
-}
-
-.active-red {
-    box-shadow: 0 0 20px rgba(239,68,68,.6);
-    border-color: #ef4444 !important;
-}
-
-.active-blue {
-    box-shadow: 0 0 20px rgba(59,130,246,.6);
-    border-color: #3b82f6 !important;
-}
-
-.active-yellow {
-    box-shadow: 0 0 20px rgba(234,179,8,.6);
-    border-color: #eab308 !important;
-}
-
-.active-green {
-    box-shadow: 0 0 20px rgba(34,197,94,.6);
-    border-color: #22c55e !important;
-}
-
-.disabled-button {
-    opacity: .45;
-    pointer-events: none;
-}
-
-.bot-option {
-    cursor: pointer;
-}
-
-.bot-option input {
-    display: none;
-}
-
-.bot-option-card {
-    border: 2px solid #334155;
-    transition: .15s;
-}
-
-.bot-option input:checked + .bot-option-card {
-    border-color: #6366f1;
-    background: rgba(99,102,241,.18);
-    box-shadow: 0 0 18px rgba(99,102,241,.2);
-}
-
-.bot-seat {
-    color: #34d399;
-}
-
-.turn-indicator {
-    animation: turnPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes turnPulse {
-    0%,100% { opacity: 1; }
-    50% { opacity: .55; }
-}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{touch-action:manipulation;user-select:none;-webkit-user-select:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#f8fafc;overflow-x:hidden}
+button,input{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+.glass{background:rgba(30,41,59,.85);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)}
+.board{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));grid-template-rows:repeat(14,minmax(0,1fr));aspect-ratio:1;box-shadow:0 25px 50px -12px rgba(0,0,0,.7);transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:center}
+.square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;min-width:0;min-height:0;overflow:hidden}
+.light{background:#eeeed2}
+.dark{background:#769656}
+.off{background:transparent;pointer-events:none}
+.selected{background:#baca44!important}
+.last{background:rgba(245,203,66,.5)!important}
+.check{box-shadow:inset 0 0 0 4px rgba(239,68,68,.85)}
+.dot{width:30%;height:30%;background:rgba(0,0,0,.28);border-radius:50%;pointer-events:none}
+.ring{position:absolute;inset:4px;border:4px solid rgba(239,68,68,.78);border-radius:50%;pointer-events:none}
+.piece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;position:relative}
+.svg{width:85%;height:85%;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));pointer-events:none;will-change:transform,opacity}
+.arrive .svg{animation:arrive .24s cubic-bezier(.2,.8,.2,1)}
+.promo .svg{animation:promo .42s cubic-bezier(.2,.8,.2,1)}
+.flash{animation:flash .25s ease-out}
+.badge{position:absolute;right:6%;bottom:6%;width:14px;height:14px;border-radius:50%;background:rgba(15,23,42,.94);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.5)}
+.active-red{box-shadow:0 0 20px rgba(239,68,68,.6);border-color:#ef4444!important}
+.active-blue{box-shadow:0 0 20px rgba(59,130,246,.6);border-color:#3b82f6!important}
+.active-yellow{box-shadow:0 0 20px rgba(234,179,8,.6);border-color:#eab308!important}
+.active-green{box-shadow:0 0 20px rgba(34,197,94,.6);border-color:#22c55e!important}
+.pulse{animation:pulse 1.5s ease-in-out infinite}
+.score{font-variant-numeric:tabular-nums}
+.out-text{color:#94a3b8}
+.bot-text{color:#34d399}
+.open-text{color:#94a3b8}
+@keyframes arrive{0%{opacity:.15;transform:scale(.72)}65%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes promo{0%{opacity:.15;transform:scale(.5) rotate(-8deg)}65%{opacity:1;transform:scale(1.15) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes flash{0%{box-shadow:inset 0 0 0 rgba(255,255,255,0)}40%{box-shadow:inset 0 0 45px rgba(255,255,255,.28)}100%{box-shadow:inset 0 0 0 rgba(255,255,255,0)}}
+@keyframes pulse{50%{opacity:.5}}
 </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center p-2 sm:p-4">
+<body class="min-h-screen p-2 sm:p-4 flex flex-col items-center">
 
-<!-- =========================================================
-     LOBBY
-========================================================= -->
+<div id="lobby" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
 
-<div id="lobby-modal"
-     class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-
-    <div class="glass-panel border-2 border-indigo-500/30 rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
-
-        <div class="space-y-2 mb-6">
-
-            <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
-                <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
-            </div>
-
-            <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
-                4-Player Chess Online
-            </h2>
-
-            <p class="text-xs text-slate-400">
-                Play live 4-player chess with your friends.
-            </p>
-
+        <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-3">
+            <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
         </div>
+
+        <h2 class="text-2xl font-black bg-gradient-to-r from-red-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
+            4-Player Chess Online
+        </h2>
+
+        <p class="text-xs text-slate-400 mb-6">
+            Play live FFA chess with friends or bots.
+        </p>
 
         <div id="lobby-main">
 
             <button
-                id="btn-create-room"
+                id="create"
                 type="button"
-                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg flex items-center justify-center gap-2">
-
-                <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                class="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold shadow-lg">
                 Create New Room
-
             </button>
 
             <div class="flex items-center gap-2 my-4">
-
                 <div class="h-px bg-slate-700 flex-1"></div>
-
-                <span class="text-xs text-slate-500 font-semibold uppercase">
+                <span class="text-[10px] text-slate-500 font-semibold uppercase">
                     Or Join Game
                 </span>
-
                 <div class="h-px bg-slate-700 flex-1"></div>
-
             </div>
 
             <div class="flex gap-2">
 
                 <input
+                    id="code"
                     type="text"
-                    id="input-room-code"
-                    placeholder="ENTER ROOM CODE"
                     maxlength="6"
+                    placeholder="ROOM CODE"
                     autocomplete="off"
                     autocapitalize="characters"
-                    class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
+                    class="flex-1 rounded-2xl bg-slate-900 border border-slate-700 p-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500">
 
                 <button
-                    id="btn-join-room"
+                    id="join"
                     type="button"
-                    class="px-6 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 transition rounded-2xl font-bold text-sm border border-slate-700">
-
+                    class="px-5 rounded-2xl bg-slate-700 hover:bg-slate-600 font-bold">
                     Join
-
                 </button>
 
             </div>
 
         </div>
 
-        <div id="bot-selection" class="hidden">
+        <div id="bots" class="hidden">
 
             <div class="text-left mb-4">
-
                 <button
-                    id="back-to-lobby"
+                    id="back"
                     type="button"
-                    class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
-
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                    Back
-
+                    class="text-xs text-slate-400 hover:text-white">
+                    ← Back
                 </button>
-
             </div>
 
-            <h3 class="text-lg font-bold mb-1">
-                Create Game
-            </h3>
-
-            <p class="text-xs text-slate-400 mb-5">
-                Choose how many computer players you want.
+            <p class="font-bold mb-1">
+                Computer players
             </p>
 
-            <div class="grid grid-cols-4 gap-2 mb-5">
+            <p class="text-xs text-slate-400 mb-5">
+                Bots fill Blue, then Yellow, then Green.
+            </p>
 
-                <label class="bot-option">
-                    <input type="radio" name="bot-count" value="0" checked>
-                    <div class="bot-option-card rounded-2xl p-3">
-                        <div class="text-xl font-black">0</div>
-                        <div class="text-[10px] text-slate-400">Bots</div>
+            <div id="bot-options" class="grid grid-cols-4 gap-2 mb-5">
+
+                <label class="cursor-pointer">
+                    <input class="botcount hidden" type="radio" name="bc" value="0" checked>
+                    <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
+                        <b>0</b>
+                        <small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
 
-                <label class="bot-option">
-                    <input type="radio" name="bot-count" value="1">
-                    <div class="bot-option-card rounded-2xl p-3">
-                        <div class="text-xl font-black">1</div>
-                        <div class="text-[10px] text-slate-400">Bot</div>
+                <label class="cursor-pointer">
+                    <input class="botcount hidden" type="radio" name="bc" value="1">
+                    <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
+                        <b>1</b>
+                        <small class="block text-slate-400">Bot</small>
                     </div>
                 </label>
 
-                <label class="bot-option">
-                    <input type="radio" name="bot-count" value="2">
-                    <div class="bot-option-card rounded-2xl p-3">
-                        <div class="text-xl font-black">2</div>
-                        <div class="text-[10px] text-slate-400">Bots</div>
+                <label class="cursor-pointer">
+                    <input class="botcount hidden" type="radio" name="bc" value="2">
+                    <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
+                        <b>2</b>
+                        <small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
 
-                <label class="bot-option">
-                    <input type="radio" name="bot-count" value="3">
-                    <div class="bot-option-card rounded-2xl p-3">
-                        <div class="text-xl font-black">3</div>
-                        <div class="text-[10px] text-slate-400">Bots</div>
+                <label class="cursor-pointer">
+                    <input class="botcount hidden" type="radio" name="bc" value="3">
+                    <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
+                        <b>3</b>
+                        <small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
-
-            </div>
-
-            <div class="bg-slate-900/60 rounded-2xl p-4 text-left mb-5">
-
-                <div class="text-xs font-semibold mb-3 text-slate-300">
-                    Starting seats
-                </div>
-
-                <div class="space-y-2 text-xs">
-
-                    <div class="flex justify-between">
-                        <span class="text-red-400">Red</span>
-                        <span>You</span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-blue-400">Blue</span>
-                        <span id="preview-blue">Open</span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-yellow-400">Yellow</span>
-                        <span id="preview-yellow">Open</span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-green-400">Green</span>
-                        <span id="preview-green">Open</span>
-                    </div>
-
-                </div>
 
             </div>
 
             <button
-                id="btn-confirm-create"
+                id="confirm"
                 type="button"
-                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-95 transition rounded-2xl font-bold text-sm shadow-lg">
-
+                class="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold">
                 Create Game
-
             </button>
 
         </div>
 
-        <p id="lobby-status"
-           class="text-xs text-slate-400 min-h-[18px] mt-3">
-        </p>
+        <p id="status" class="text-xs text-slate-400 min-h-[18px] mt-3"></p>
 
     </div>
 </div>
 
-<!-- =========================================================
-     HEADER
-========================================================= -->
+<header class="w-full max-w-6xl glass rounded-2xl p-3 sm:p-4 mb-2 flex justify-between items-center shadow-lg">
 
-<header class="w-full max-w-6xl flex justify-between items-center bg-slate-800/80 p-3 sm:p-4 rounded-2xl glass-panel mb-2 shadow-lg">
+    <div class="min-w-0">
 
-    <div class="flex items-center space-x-3 min-w-0">
+        <div class="flex items-center gap-2">
 
-        <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
-            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
-        </div>
-
-        <div class="min-w-0">
-
-            <div class="flex items-center gap-2">
-
-                <h1 class="text-base sm:text-lg font-bold tracking-tight">
-                    4-Player Chess
-                </h1>
-
-                <span
-                    id="room-badge"
-                    class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                    No Room
-                </span>
-
+            <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
+                <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
             </div>
 
-            <p id="role-indicator" class="text-xs text-slate-400">
-                Seat: Spectator
-            </p>
+            <b class="text-base sm:text-lg">
+                4-Player Chess
+            </b>
+
+            <span
+                id="room"
+                class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                No Room
+            </span>
 
         </div>
+
+        <p id="role" class="text-xs text-slate-400 mt-1">
+            Seat: Spectator
+        </p>
 
     </div>
 
-    <div class="flex items-center space-x-1 sm:space-x-2">
+    <div class="flex gap-2 shrink-0">
 
         <button
-            id="share-btn"
+            id="share"
             type="button"
-            class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-
-            <i data-lucide="share-2" class="w-4 h-4"></i>
-
-            <span class="hidden sm:inline">
-                Share
-            </span>
-
+            class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">
+            Share
         </button>
 
         <button
-            id="rotate-btn"
+            id="rotate"
             type="button"
-            class="px-3 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 transition rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow">
-
-            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
-
-            <span class="hidden md:inline">
-                Rotate
-            </span>
-
+            class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold">
+            Rotate
         </button>
 
     </div>
 
 </header>
 
-<!-- =========================================================
-     GAME
-========================================================= -->
+<main class="w-full max-w-6xl flex flex-col lg:flex-row gap-3 items-center justify-center flex-1">
 
-<main class="w-full max-w-6xl flex-1 flex flex-col lg:flex-row gap-3 items-center justify-center my-auto">
+    <div class="w-full lg:w-64 flex lg:flex-col gap-2">
 
-    <div class="w-full lg:w-64 flex flex-row lg:flex-col justify-between gap-2">
+        <div
+            id="card-yellow"
+            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
 
-        <div id="card-yellow"
-             class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+            <div class="flex justify-between items-center">
 
-            <div class="flex items-center justify-between">
+                <span
+                    id="name-yellow"
+                    class="text-yellow-400 font-bold text-xs">
+                    Yellow
+                </span>
 
-                <div class="flex items-center gap-2">
-
-                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-
-                    <span id="name-yellow"
-                          class="font-bold text-xs text-yellow-400">
-                        Yellow (Top)
-                    </span>
-
-                </div>
-
-                <button
-                    id="seat-btn-yellow"
-                    data-seat="yellow"
-                    type="button"
-                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-                    Claim
-                </button>
+                <span
+                    id="score-yellow"
+                    class="score text-yellow-300 font-black">
+                    0
+                </span>
 
             </div>
+
+            <button
+                data-seat="yellow"
+                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+                Claim
+            </button>
 
         </div>
 
-        <div id="card-blue"
-             class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+        <div
+            id="card-blue"
+            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
 
-            <div class="flex items-center justify-between">
+            <div class="flex justify-between items-center">
 
-                <div class="flex items-center gap-2">
+                <span
+                    id="name-blue"
+                    class="text-blue-400 font-bold text-xs">
+                    Blue
+                </span>
 
-                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-
-                    <span id="name-blue"
-                          class="font-bold text-xs text-blue-400">
-                        Blue (Left)
-                    </span>
-
-                </div>
-
-                <button
-                    id="seat-btn-blue"
-                    data-seat="blue"
-                    type="button"
-                    class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-                    Claim
-                </button>
+                <span
+                    id="score-blue"
+                    class="score text-blue-300 font-black">
+                    0
+                </span>
 
             </div>
+
+            <button
+                data-seat="blue"
+                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+                Claim
+            </button>
 
         </div>
 
     </div>
 
-    <div class="relative w-full max-w-[520px] sm:max-w-[600px] aspect-square flex items-center justify-center p-1 bg-slate-800/50 rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
+    <div class="w-full max-w-[600px] aspect-square p-1 bg-slate-800/60 rounded-3xl border border-slate-700/50 shadow-2xl">
 
-        <div id="board"
-             class="board-grid w-full h-full rounded-2xl overflow-hidden bg-slate-900">
+        <div
+            id="board"
+            class="board w-full h-full rounded-2xl overflow-hidden bg-slate-900">
         </div>
 
     </div>
 
-    <div class="w-full lg:w-64 flex flex-col justify-between gap-2">
+    <div class="w-full lg:w-64 flex lg:flex-col gap-2">
 
-        <div class="flex flex-row lg:flex-col gap-2">
+        <div
+            id="card-green"
+            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
 
-            <div id="card-green"
-                 class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+            <div class="flex justify-between items-center">
 
-                <div class="flex items-center justify-between">
+                <span
+                    id="name-green"
+                    class="text-green-400 font-bold text-xs">
+                    Green
+                </span>
 
-                    <div class="flex items-center gap-2">
-
-                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
-
-                        <span id="name-green"
-                              class="font-bold text-xs text-green-400">
-                            Green (Right)
-                        </span>
-
-                    </div>
-
-                    <button
-                        id="seat-btn-green"
-                        data-seat="green"
-                        type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-                        Claim
-                    </button>
-
-                </div>
+                <span
+                    id="score-green"
+                    class="score text-green-300 font-black">
+                    0
+                </span>
 
             </div>
 
-            <div id="card-red"
-                 class="player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 border-transparent transition-all">
+            <button
+                data-seat="green"
+                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+                Claim
+            </button>
 
-                <div class="flex items-center justify-between">
+        </div>
 
-                    <div class="flex items-center gap-2">
+        <div
+            id="card-red"
+            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
 
-                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+            <div class="flex justify-between items-center">
 
-                        <span id="name-red"
-                              class="font-bold text-xs text-red-400">
-                            Red (Bottom)
-                        </span>
+                <span
+                    id="name-red"
+                    class="text-red-400 font-bold text-xs">
+                    Red
+                </span>
 
-                    </div>
-
-                    <button
-                        id="seat-btn-red"
-                        data-seat="red"
-                        type="button"
-                        class="seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200">
-                        Claim
-                    </button>
-
-                </div>
+                <span
+                    id="score-red"
+                    class="score text-red-300 font-black">
+                    0
+                </span>
 
             </div>
+
+            <button
+                data-seat="red"
+                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+                Claim
+            </button>
 
         </div>
 
@@ -672,385 +359,1433 @@ button {
 "use strict";
 
 /* =========================================================
-   FIREBASE
+   FIREBASE — KEEPING THE CONFIG UNCHANGED
 ========================================================= */
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBLIXmflLS3vfSVTZDJn15kLQg68ioEafQ",
-    authDomain: "chess4p.firebaseapp.com",
-    databaseURL: "https://chess4p-default-rtdb.firebaseio.com",
-    projectId: "chess4p",
-    storageBucket: "chess4p.firebasestorage.app",
-    messagingSenderId: "907300249071",
-    appId: "1:907300249071:web:17572edd070d1921666a1a"
+const firebaseConfig={
+    apiKey:"AIzaSyBLIXmflLS3vfSVTZDJn15kLQg68ioEafQ",
+    authDomain:"chess4p.firebaseapp.com",
+    databaseURL:"https://chess4p-default-rtdb.firebaseio.com",
+    projectId:"chess4p",
+    storageBucket:"chess4p.firebasestorage.app",
+    messagingSenderId:"907300249071",
+    appId:"1:907300249071:web:17572edd070d1921666a1a"
 };
 
 firebase.initializeApp(firebaseConfig);
 
-const database = firebase.database();
+const db=firebase.database();
 
-/* =========================================================
-   CONSTANTS
-========================================================= */
+const N=14;
 
-const BOARD_SIZE = 14;
-
-const PLAYERS = [
+const P=[
     "red",
     "blue",
     "yellow",
     "green"
 ];
 
-const PLAYER_NAMES = {
-    red: "Red",
-    blue: "Blue",
-    yellow: "Yellow",
-    green: "Green"
+const DIR={
+    red:{r:-1,c:0},
+    blue:{r:0,c:1},
+    yellow:{r:1,c:0},
+    green:{r:0,c:-1}
 };
 
-const SEAT_ROTATIONS = {
-    red: 0,
-    blue: 270,
-    yellow: 180,
-    green: 90
+const ROT={
+    red:0,
+    blue:270,
+    yellow:180,
+    green:90
 };
 
-const BOT_SEATS = [
+const BOT_SEATS=[
     "blue",
     "yellow",
     "green"
 ];
 
-const PIECE_COLORS = {
-
-    red: {
-        fill: "#ef4444",
-        stroke: "#991b1b",
-        accent: "#fca5a5"
-    },
-
-    blue: {
-        fill: "#3b82f6",
-        stroke: "#1e40af",
-        accent: "#93c5fd"
-    },
-
-    yellow: {
-        fill: "#eab308",
-        stroke: "#854d0e",
-        accent: "#fef08a"
-    },
-
-    green: {
-        fill: "#22c55e",
-        stroke: "#166534",
-        accent: "#86efac"
-    },
-
-    gray: {
-        fill: "#64748b",
-        stroke: "#334155",
-        accent: "#cbd5e1"
-    }
-};
-
-const PAWN_DIRECTIONS = {
-
-    red: {
-        r: -1,
-        c: 0
-    },
-
-    blue: {
-        r: 0,
-        c: 1
-    },
-
-    yellow: {
-        r: 1,
-        c: 0
-    },
-
-    green: {
-        r: 0,
-        c: -1
-    }
+const VALUES={
+    p:1,
+    n:3,
+    b:5,
+    r:5,
+    q:9,
+    k:20
 };
 
 /*
- * Standard FFA 4-player promotion lines.
- *
- * Red    -> row 5
- * Blue   -> column 8
- * Yellow -> row 8
- * Green  -> column 5
+ * One square sooner than the previous version.
  */
-const PROMOTION_TEST = {
-
-    red: (r, c) => r === 5,
-
-    blue: (r, c) => c === 8,
-
-    yellow: (r, c) => r === 8,
-
-    green: (r, c) => c === 5
+const PROMOTE={
+    red:(r,c)=>r===6,
+    blue:(r,c)=>c===7,
+    yellow:(r,c)=>r===7,
+    green:(r,c)=>c===6
 };
 
-/* =========================================================
-   USER
-========================================================= */
+const COLORS={
+    red:["#ef4444","#991b1b","#fca5a5"],
+    blue:["#3b82f6","#1e40af","#93c5fd"],
+    yellow:["#eab308","#854d0e","#fef08a"],
+    green:["#22c55e","#166534","#86efac"],
+    gray:["#64748b","#334155","#cbd5e1"]
+};
 
-function getUserId() {
+const uid=(()=>{
+    try{
 
-    const key =
-        "fourPlayerChessUserId";
+        let x=
+            localStorage.fourPlayerChessUserId;
 
-    try {
+        if(!x){
 
-        let id =
-            localStorage.getItem(key);
-
-        if (!id) {
-
-            id =
-                "user_" +
+            x=
+                "user_"+
                 Math.random()
                     .toString(36)
-                    .substring(2, 11);
+                    .slice(2,11);
 
-            localStorage.setItem(
-                key,
-                id
-            );
+            localStorage.fourPlayerChessUserId=
+                x;
         }
 
-        return id;
+        return x;
 
-    } catch {
+    }catch{
 
-        return (
-            "user_" +
+        return(
+            "user_"+
             Math.random()
                 .toString(36)
-                .substring(2, 11)
+                .slice(2,11)
         );
     }
-}
+})();
 
-const userId =
-    getUserId();
+let ref=null;
+let listener=null;
+let roomCode=null;
+let controllerTimer=null;
+let botTimer=null;
+let botPending=false;
+let botSig=null;
+let creating=false;
+let joining=false;
 
-/* =========================================================
-   STATE
-========================================================= */
+let S={
+    board:[],
+    turn:0,
 
-let roomCode = null;
-let roomRef = null;
-let roomListener = null;
-
-let botTimer = null;
-let botRunning = false;
-let botSignature = null;
-
-let controllerTimer = null;
-
-let creatingRoom = false;
-let joiningRoom = false;
-
-let localState = {
-
-    board:
-        Array.from(
-            { length: BOARD_SIZE },
-            () => Array(BOARD_SIZE).fill(null)
-        ),
-
-    currentPlayerIdx: 0,
-
-    eliminated: {
-        red: false,
-        blue: false,
-        yellow: false,
-        green: false
+    elim:{
+        red:false,
+        blue:false,
+        yellow:false,
+        green:false
     },
 
-    seats: {
-        red: null,
-        blue: null,
-        yellow: null,
-        green: null
+    seats:{
+        red:null,
+        blue:null,
+        yellow:null,
+        green:null
     },
 
-    bots: {
-        red: false,
-        blue: false,
-        yellow: false,
-        green: false
+    bots:{
+        red:false,
+        blue:false,
+        yellow:false,
+        green:false
     },
 
-    selectedSquare: null,
+    scores:{
+        red:0,
+        blue:0,
+        yellow:0,
+        green:0
+    },
 
-    validMoves: [],
-
-    lastMove: null,
-
-    boardRotation: 0,
-
-    mySeat: null,
-
-    manualRotation: false,
-
-    hostId: null
+    last:null,
+    selected:null,
+    moves:[],
+    seat:null,
+    rotation:0,
+    manual:false,
+    host:null,
+    gameOver:false
 };
 
-/* =========================================================
-   DOM
-========================================================= */
+const $=
+    id =>
+        document.getElementById(id);
 
-const boardEl =
-    document.getElementById("board");
-
-const lobbyModal =
-    document.getElementById("lobby-modal");
-
-const lobbyMain =
-    document.getElementById("lobby-main");
-
-const botSelection =
-    document.getElementById("bot-selection");
-
-const lobbyStatus =
-    document.getElementById("lobby-status");
-
-const roomInput =
-    document.getElementById("input-room-code");
-
-const roomBadge =
-    document.getElementById("room-badge");
-
-const roleIndicator =
-    document.getElementById("role-indicator");
-
-/* =========================================================
-   GENERAL HELPERS
-========================================================= */
-
-function setStatus(
-    text,
-    error = false
-) {
-
-    lobbyStatus.textContent =
-        text;
-
-    lobbyStatus.className =
-        "text-xs min-h-[18px] mt-3 " +
-        (
-            error
-                ? "text-red-400"
-                : "text-slate-400"
+const empty=
+    () =>
+        Array.from(
+            {length:N},
+            () =>
+                Array(N).fill(null)
         );
-}
 
-function emptyBoard() {
+const clone=
+    b =>
+        b.map(
+            row =>
+                row.map(
+                    x =>
+                        x
+                            ? {...x}
+                            : null
+                )
+        );
 
-    return Array.from(
-        { length: BOARD_SIZE },
-        () => Array(BOARD_SIZE).fill(null)
+function valid(r,c){
+
+    if(
+        r<0||
+        r>=N||
+        c<0||
+        c>=N
+    ){
+        return false;
+    }
+
+    return !(
+        (r<3&&c<3)||
+        (r<3&&c>10)||
+        (r>10&&c<3)||
+        (r>10&&c>10)
     );
 }
 
-function cloneBoard(board) {
+function playerHasAnyPiece(b,p){
 
-    return board.map(
+    return b.some(
         row =>
-            row.map(
-                piece =>
-                    piece
-                        ? { ...piece }
-                        : null
+            row.some(
+                x =>
+                    x?.player===p
             )
     );
 }
 
-function isValidSquare(r, c) {
+function nextTurn(i,e){
 
-    if (
-        r < 0 ||
-        r >= BOARD_SIZE ||
-        c < 0 ||
-        c >= BOARD_SIZE
-    ) {
-        return false;
-    }
+    for(
+        let k=1;
+        k<=4;
+        k++
+    ){
 
-    const top = r < 3;
-    const bottom = r > 10;
-    const left = c < 3;
-    const right = c > 10;
+        const n=
+            (i+k)%4;
 
-    return !(
-        (top && left) ||
-        (top && right) ||
-        (bottom && left) ||
-        (bottom && right)
-    );
-}
-
-function nextLivingPlayer(
-    currentIdx,
-    eliminated
-) {
-
-    for (
-        let i = 1;
-        i <= PLAYERS.length;
-        i++
-    ) {
-
-        const idx =
-            (currentIdx + i) %
-            PLAYERS.length;
-
-        const player =
-            PLAYERS[idx];
-
-        if (
-            !eliminated[player]
-        ) {
-            return idx;
+        if(
+            !e[P[n]]
+        ){
+            return n;
         }
     }
 
-    return currentIdx;
+    return i;
 }
 
 /* =========================================================
-   PIECE SVG
+   INITIAL BOARD
 ========================================================= */
 
-function getPieceSVG(
-    type,
-    colorKey
-) {
+function initial(){
 
-    const colors =
-        PIECE_COLORS[colorKey] ||
-        PIECE_COLORS.gray;
+    const b=
+        empty();
 
-    const fill =
-        colors.fill;
+    const back=[
+        "r",
+        "n",
+        "b",
+        "q",
+        "k",
+        "b",
+        "n",
+        "r"
+    ];
 
-    const stroke =
-        colors.stroke;
+    const pawns=
+        Array(8).fill("p");
 
-    const accent =
-        colors.accent;
+    const row=
+        (
+            r,
+            start,
+            pieces,
+            player
+        ) =>
+            pieces.forEach(
+                (t,i)=>{
+                    b[r][start+i]={
+                        type:t,
+                        player,
+                        moved:false
+                    };
+                }
+            );
 
-    const pieces = {
+    const col=
+        (
+            c,
+            start,
+            pieces,
+            player
+        ) =>
+            pieces.forEach(
+                (t,i)=>{
+                    b[start+i][c]={
+                        type:t,
+                        player,
+                        moved:false
+                    };
+                }
+            );
 
-        p: `
+    row(
+        13,
+        3,
+        back,
+        "red"
+    );
+
+    row(
+        12,
+        3,
+        pawns,
+        "red"
+    );
+
+    row(
+        0,
+        3,
+        [...back].reverse(),
+        "yellow"
+    );
+
+    row(
+        1,
+        3,
+        pawns,
+        "yellow"
+    );
+
+    col(
+        0,
+        3,
+        back,
+        "blue"
+    );
+
+    col(
+        1,
+        3,
+        pawns,
+        "blue"
+    );
+
+    col(
+        13,
+        3,
+        [...back].reverse(),
+        "green"
+    );
+
+    col(
+        12,
+        3,
+        pawns,
+        "green"
+    );
+
+    return b;
+}
+
+function shouldPromote(
+    p,
+    r,
+    c
+){
+
+    return !!(
+        p&&
+        p.type==="p"&&
+        PROMOTE[p.player]?.(r,c)
+    );
+}
+
+function promote(p){
+
+    return{
+        ...p,
+        type:"q",
+        promoted:true,
+        moved:true
+    };
+}
+
+function startingPawn(
+    p,
+    r,
+    c
+){
+
+    return(
+        (p==="red"&&r===12)||
+        (p==="yellow"&&r===1)||
+        (p==="blue"&&c===1)||
+        (p==="green"&&c===12)
+    );
+}
+
+/* =========================================================
+   CASTLING
+=========================================================
+
+   King positions:
+   Red    c7
+   Blue   r7
+   Yellow c6
+   Green  r6
+
+========================================================= */
+
+function castleInfo(
+    player,
+    side
+){
+
+    if(
+        player==="red"
+    ){
+
+        return side==="K"
+            ? {
+                k:{r:13,c:7},
+                rook:{r:13,c:10},
+                pass:{r:13,c:8},
+                to:{r:13,c:9},
+                rookTo:{r:13,c:8}
+            }
+
+            : {
+                k:{r:13,c:7},
+                rook:{r:13,c:3},
+                pass:{r:13,c:6},
+                to:{r:13,c:5},
+                rookTo:{r:13,c:6}
+            };
+    }
+
+    if(
+        player==="yellow"
+    ){
+
+        return side==="K"
+            ? {
+                k:{r:0,c:6},
+                rook:{r:0,c:10},
+                pass:{r:0,c:7},
+                to:{r:0,c:8},
+                rookTo:{r:0,c:7}
+            }
+
+            : {
+                k:{r:0,c:6},
+                rook:{r:0,c:3},
+                pass:{r:0,c:5},
+                to:{r:0,c:4},
+                rookTo:{r:0,c:5}
+            };
+    }
+
+    if(
+        player==="blue"
+    ){
+
+        return side==="K"
+            ? {
+                k:{r:7,c:0},
+                rook:{r:10,c:0},
+                pass:{r:8,c:0},
+                to:{r:9,c:0},
+                rookTo:{r:8,c:0}
+            }
+
+            : {
+                k:{r:7,c:0},
+                rook:{r:3,c:0},
+                pass:{r:6,c:0},
+                to:{r:5,c:0},
+                rookTo:{r:6,c:0}
+            };
+    }
+
+    return side==="K"
+        ? {
+            k:{r:6,c:13},
+            rook:{r:10,c:13},
+            pass:{r:7,c:13},
+            to:{r:8,c:13},
+            rookTo:{r:7,c:13}
+        }
+
+        : {
+            k:{r:6,c:13},
+            rook:{r:3,c:13},
+            pass:{r:5,c:13},
+            to:{r:4,c:13},
+            rookTo:{r:5,c:13}
+        };
+}
+
+function castleAvailable(
+    b,
+    p,
+    side
+){
+
+    const x=
+        castleInfo(
+            p,
+            side
+        );
+
+    const k=
+        b[x.k.r]?.[x.k.c];
+
+    const rook=
+        b[x.rook.r]?.[x.rook.c];
+
+    if(
+        !k||
+        k.player!==p||
+        k.type!=="k"||
+        k.moved
+    ){
+        return false;
+    }
+
+    if(
+        !rook||
+        rook.player!==p||
+        rook.type!=="r"||
+        rook.moved
+    ){
+        return false;
+    }
+
+    const dr=
+        Math.sign(
+            x.rook.r-x.k.r
+        );
+
+    const dc=
+        Math.sign(
+            x.rook.c-x.k.c
+        );
+
+    let r=
+        x.k.r+dr;
+
+    let c=
+        x.k.c+dc;
+
+    while(
+        r!==x.rook.r||
+        c!==x.rook.c
+    ){
+
+        if(
+            b[r]?.[c]
+        ){
+            return false;
+        }
+
+        r+=dr;
+        c+=dc;
+    }
+
+    return true;
+}
+
+/* =========================================================
+   PSEUDO-LEGAL MOVES
+========================================================= */
+
+function pseudo(
+    b,
+    r,
+    c,
+    attack=false
+){
+
+    const p=
+        b[r]?.[c];
+
+    if(
+        !p||
+        p.player==="gray"
+    ){
+        return [];
+    }
+
+    const moves=[];
+
+    const add=(
+        nr,
+        nc
+    )=>{
+
+        if(
+            !valid(nr,nc)
+        ){
+            return;
+        }
+
+        const t=
+            b[nr][nc];
+
+        if(
+            t?.player===p.player
+        ){
+            return;
+        }
+
+        if(
+            t?.type==="k"&&
+            t.player!=="gray"&&
+            !attack
+        ){
+            return;
+        }
+
+        moves.push({
+            r:nr,
+            c:nc
+        });
+    };
+
+    if(
+        p.type==="p"
+    ){
+
+        const d=
+            DIR[p.player];
+
+        if(!d){
+            return moves;
+        }
+
+        if(attack){
+
+            const ds=
+                d.r!==0
+                    ? [
+                        [d.r,-1],
+                        [d.r,1]
+                    ]
+                    : [
+                        [-1,d.c],
+                        [1,d.c]
+                    ];
+
+            ds.forEach(
+                ([dr,dc])=>{
+
+                    const nr=
+                        r+dr;
+
+                    const nc=
+                        c+dc;
+
+                    if(
+                        valid(nr,nc)
+                    ){
+
+                        moves.push({
+                            r:nr,
+                            c:nc
+                        });
+                    }
+                }
+            );
+
+            return moves;
+        }
+
+        let nr=
+            r+d.r;
+
+        let nc=
+            c+d.c;
+
+        if(
+            valid(nr,nc)&&
+            !b[nr][nc]
+        ){
+
+            moves.push({
+                r:nr,
+                c:nc
+            });
+
+            if(
+                !p.moved&&
+                startingPawn(
+                    p.player,
+                    r,
+                    c
+                )
+            ){
+
+                const nr2=
+                    r+d.r*2;
+
+                const nc2=
+                    c+d.c*2;
+
+                if(
+                    valid(nr2,nc2)&&
+                    !b[nr2][nc2]
+                ){
+
+                    moves.push({
+                        r:nr2,
+                        c:nc2
+                    });
+                }
+            }
+        }
+
+        const captures=
+            d.r!==0
+                ? [
+                    [d.r,-1],
+                    [d.r,1]
+                ]
+                : [
+                    [-1,d.c],
+                    [1,d.c]
+                ];
+
+        captures.forEach(
+            ([dr,dc])=>{
+
+                const cr=
+                    r+dr;
+
+                const cc=
+                    c+dc;
+
+                if(
+                    !valid(cr,cc)
+                ){
+                    return;
+                }
+
+                const t=
+                    b[cr][cc];
+
+                if(
+                    t&&
+                    t.player!==p.player
+                ){
+
+                    moves.push({
+                        r:cr,
+                        c:cc
+                    });
+                }
+            }
+        );
+
+        return moves;
+    }
+
+    if(
+        p.type==="n"
+    ){
+
+        [
+            [-2,-1],
+            [-2,1],
+            [-1,-2],
+            [-1,2],
+            [1,-2],
+            [1,2],
+            [2,-1],
+            [2,1]
+        ].forEach(
+            ([dr,dc]) =>
+                add(
+                    r+dr,
+                    c+dc
+                )
+        );
+
+        return moves;
+    }
+
+    if(
+        p.type==="k"
+    ){
+
+        for(
+            let dr=-1;
+            dr<=1;
+            dr++
+        ){
+
+            for(
+                let dc=-1;
+                dc<=1;
+                dc++
+            ){
+
+                if(
+                    dr||
+                    dc
+                ){
+
+                    add(
+                        r+dr,
+                        c+dc
+                    );
+                }
+            }
+        }
+
+        if(!attack){
+
+            [
+                "K",
+                "Q"
+            ].forEach(
+                side=>{
+
+                    if(
+                        castleAvailable(
+                            b,
+                            p.player,
+                            side
+                        )
+                    ){
+
+                        moves.push({
+                            ...castleInfo(
+                                p.player,
+                                side
+                            ).to,
+                            castle:side
+                        });
+                    }
+                }
+            );
+        }
+
+        return moves;
+    }
+
+    let dirs=[];
+
+    if(
+        p.type==="b"
+    ){
+
+        dirs=[
+            [1,1],
+            [1,-1],
+            [-1,1],
+            [-1,-1]
+        ];
+
+    }else if(
+        p.type==="r"
+    ){
+
+        dirs=[
+            [1,0],
+            [-1,0],
+            [0,1],
+            [0,-1]
+        ];
+
+    }else{
+
+        dirs=[
+            [1,1],
+            [1,-1],
+            [-1,1],
+            [-1,-1],
+            [1,0],
+            [-1,0],
+            [0,1],
+            [0,-1]
+        ];
+    }
+
+    for(
+        const [dr,dc]
+        of dirs
+    ){
+
+        let nr=
+            r+dr;
+
+        let nc=
+            c+dc;
+
+        while(
+            valid(nr,nc)
+        ){
+
+            const t=
+                b[nr][nc];
+
+            if(!t){
+
+                moves.push({
+                    r:nr,
+                    c:nc
+                });
+
+            }else{
+
+                if(
+                    t.player!==p.player
+                ){
+
+                    if(
+                        t.player==="gray"||
+                        t.type!=="k"||
+                        attack
+                    ){
+
+                        moves.push({
+                            r:nr,
+                            c:nc
+                        });
+                    }
+                }
+
+                break;
+            }
+
+            nr+=dr;
+            nc+=dc;
+        }
+    }
+
+    return moves;
+}
+
+/* =========================================================
+   CHECK / ATTACK DETECTION
+========================================================= */
+
+function king(
+    b,
+    p
+){
+
+    for(
+        let r=0;
+        r<N;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<N;
+            c++
+        ){
+
+            const x=
+                b[r][c];
+
+            if(
+                x?.player===p&&
+                x.type==="k"
+            ){
+
+                return{
+                    r,
+                    c
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
+function attacks(
+    b,
+    r,
+    c,
+    p
+){
+
+    for(
+        let pr=0;
+        pr<N;
+        pr++
+    ){
+
+        for(
+            let pc=0;
+            pc<N;
+            pc++
+        ){
+
+            const piece=
+                b[pr][pc];
+
+            if(
+                piece?.player!==p
+            ){
+                continue;
+            }
+
+            if(
+                pseudo(
+                    b,
+                    pr,
+                    pc,
+                    true
+                ).some(
+                    x =>
+                        x.r===r&&
+                        x.c===c
+                )
+            ){
+
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+function inCheck(
+    b,
+    p
+){
+
+    const k=
+        king(
+            b,
+            p
+        );
+
+    if(!k){
+        return true;
+    }
+
+    return P.some(
+        o=>{
+
+            if(
+                o===p
+            ){
+                return false;
+            }
+
+            if(
+                !playerHasAnyPiece(
+                    b,
+                    o
+                )
+            ){
+                return false;
+            }
+
+            return attacks(
+                b,
+                k.r,
+                k.c,
+                o
+            );
+        }
+    );
+}
+
+/* =========================================================
+   LEGAL MOVES
+========================================================= */
+
+function apply(
+    b,
+    from,
+    to
+){
+
+    const n=
+        clone(b);
+
+    let piece={
+        ...n[from.r][from.c],
+        moved:true
+    };
+
+    n[from.r][from.c]=
+        null;
+
+    if(
+        to.castle
+    ){
+
+        const x=
+            castleInfo(
+                piece.player,
+                to.castle
+            );
+
+        n[x.to.r][x.to.c]=
+            piece;
+
+        const rook=
+            n[x.rook.r]?.[x.rook.c];
+
+        n[x.rook.r][x.rook.c]=
+            null;
+
+        if(rook){
+
+            n[x.rookTo.r][x.rookTo.c]={
+                ...rook,
+                moved:true
+            };
+        }
+
+    }else{
+
+        if(
+            shouldPromote(
+                piece,
+                to.r,
+                to.c
+            )
+        ){
+
+            piece=
+                promote(piece);
+        }
+
+        n[to.r][to.c]=
+            piece;
+    }
+
+    return n;
+}
+
+function legal(
+    b,
+    r,
+    c,
+    p
+){
+
+    const out=[];
+
+    const candidates=
+        pseudo(
+            b,
+            r,
+            c,
+            false
+        );
+
+    for(
+        const x
+        of candidates
+    ){
+
+        if(
+            x.castle
+        ){
+
+            const z=
+                castleInfo(
+                    p,
+                    x.castle
+                );
+
+            /*
+             * Cannot castle out of check,
+             * through check, or into check.
+             */
+            if(
+                inCheck(
+                    b,
+                    p
+                )
+            ){
+                continue;
+            }
+
+            if(
+                P.some(
+                    o =>
+                        o!==p&&
+                        playerHasAnyPiece(
+                            b,
+                            o
+                        )&&
+                        (
+                            attacks(
+                                b,
+                                z.pass.r,
+                                z.pass.c,
+                                o
+                            )||
+                            attacks(
+                                b,
+                                z.to.r,
+                                z.to.c,
+                                o
+                            )
+                        )
+                )
+            ){
+                continue;
+            }
+
+            out.push(x);
+            continue;
+        }
+
+        const target=
+            b[x.r][x.c];
+
+        /*
+         * Live kings are never captured.
+         * Gray/dead kings can be captured.
+         */
+        if(
+            target?.type==="k"&&
+            target.player!=="gray"
+        ){
+            continue;
+        }
+
+        const next=
+            apply(
+                b,
+                {r,c},
+                x
+            );
+
+        if(
+            !inCheck(
+                next,
+                p
+            )
+        ){
+
+            out.push(x);
+        }
+    }
+
+    return out;
+}
+
+function allLegal(
+    b,
+    p
+){
+
+    const out=[];
+
+    for(
+        let r=0;
+        r<N;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<N;
+            c++
+        ){
+
+            if(
+                b[r][c]?.player!==p
+            ){
+                continue;
+            }
+
+            legal(
+                b,
+                r,
+                c,
+                p
+            ).forEach(
+                to =>
+                    out.push({
+                        from:{r,c},
+                        to,
+                        piece:b[r][c]
+                    })
+            );
+        }
+    }
+
+    return out;
+}
+
+/* =========================================================
+   SCORING
+========================================================= */
+
+function captureValue(
+    piece
+){
+
+    if(
+        !piece||
+        piece.player==="gray"
+    ){
+        return 0;
+    }
+
+    /*
+     * Promoted queens are worth only 1 point.
+     */
+    if(
+        piece.promoted
+    ){
+        return 1;
+    }
+
+    return VALUES[piece.type]||0;
+}
+
+function checkedPlayers(
+    b,
+    attacker,
+    elim
+){
+
+    return P.filter(
+        target=>{
+
+            if(
+                target===attacker||
+                elim[target]
+            ){
+                return false;
+            }
+
+            const k=
+                king(
+                    b,
+                    target
+                );
+
+            if(!k){
+                return false;
+            }
+
+            return attacks(
+                b,
+                k.r,
+                k.c,
+                attacker
+            );
+        }
+    );
+}
+
+/*
+ * Award simultaneous-check bonuses only when a move
+ * newly creates the multi-check.
+ */
+function simultaneousCheckBonus(
+    before,
+    after,
+    attacker,
+    moving,
+    elim
+){
+
+    const beforeChecked=
+        checkedPlayers(
+            before,
+            attacker,
+            elim
+        );
+
+    const afterChecked=
+        checkedPlayers(
+            after,
+            attacker,
+            elim
+        );
+
+    const newly=
+        afterChecked.filter(
+            p =>
+                !beforeChecked.includes(p)
+        );
+
+    if(
+        !newly.length||
+        afterChecked.length<2
+    ){
+
+        return{
+            points:0,
+            newChecks:newly
+        };
+    }
+
+    const queen=
+        moving.type==="q";
+
+    if(
+        afterChecked.length>=3
+    ){
+
+        return{
+            points:queen?5:20,
+            newChecks:newly
+        };
+    }
+
+    return{
+        points:queen?1:5,
+        newChecks:newly
+    };
+}
+
+/* =========================================================
+   SVG PIECES
+========================================================= */
+
+function svg(
+    t,
+    pl
+){
+
+    const[
+        fill,
+        stroke,
+        accent
+    ]=
+        COLORS[pl]||
+        COLORS.gray;
+
+    const pieces={
+
+        p:`
         <path
             d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z"
             fill="${fill}"
@@ -1070,7 +1805,7 @@ function getPieceSVG(
             fill="${stroke}"/>
         `,
 
-        r: `
+        r:`
         <path
             d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z"
             fill="${fill}"
@@ -1086,7 +1821,7 @@ function getPieceSVG(
             fill="${stroke}"/>
         `,
 
-        n: `
+        n:`
         <path
             d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z"
             fill="${fill}"
@@ -1100,7 +1835,7 @@ function getPieceSVG(
             fill="${accent}"/>
         `,
 
-        b: `
+        b:`
         <path
             d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z"
             fill="${fill}"
@@ -1116,7 +1851,7 @@ function getPieceSVG(
             stroke-width="1"/>
         `,
 
-        q: `
+        q:`
         <path
             d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z"
             fill="${fill}"
@@ -1130,7 +1865,7 @@ function getPieceSVG(
             fill="${accent}"/>
         `,
 
-        k: `
+        k:`
         <path
             d="M8 29L24 29L22 17L16 14L10 17Z"
             fill="${fill}"
@@ -1147,1011 +1882,67 @@ function getPieceSVG(
         `
     };
 
-    return `
+    return`
         <svg
             viewBox="0 0 32 32"
-            class="piece-svg">
+            class="svg">
 
-            ${pieces[type] || ""}
+            ${pieces[t]||""}
 
         </svg>
     `;
 }
 
 /* =========================================================
-   INITIAL BOARD
-========================================================= */
-
-function buildInitialBoard() {
-
-    const board =
-        emptyBoard();
-
-    const backline = [
-        "r",
-        "n",
-        "b",
-        "q",
-        "k",
-        "b",
-        "n",
-        "r"
-    ];
-
-    const pawns =
-        Array(8).fill("p");
-
-    function placeRow(
-        row,
-        start,
-        pieces,
-        player
-    ) {
-
-        pieces.forEach(
-            (type, i) => {
-
-                board[row][start + i] = {
-                    type,
-                    player,
-                    moved: false
-                };
-            }
-        );
-    }
-
-    function placeCol(
-        col,
-        start,
-        pieces,
-        player
-    ) {
-
-        pieces.forEach(
-            (type, i) => {
-
-                board[start + i][col] = {
-                    type,
-                    player,
-                    moved: false
-                };
-            }
-        );
-    }
-
-    placeRow(
-        13,
-        3,
-        backline,
-        "red"
-    );
-
-    placeRow(
-        12,
-        3,
-        pawns,
-        "red"
-    );
-
-    placeRow(
-        0,
-        3,
-        [...backline].reverse(),
-        "yellow"
-    );
-
-    placeRow(
-        1,
-        3,
-        pawns,
-        "yellow"
-    );
-
-    placeCol(
-        0,
-        3,
-        backline,
-        "blue"
-    );
-
-    placeCol(
-        1,
-        3,
-        pawns,
-        "blue"
-    );
-
-    placeCol(
-        13,
-        3,
-        [...backline].reverse(),
-        "green"
-    );
-
-    placeCol(
-        12,
-        3,
-        pawns,
-        "green"
-    );
-
-    return board;
-}
-
-/* =========================================================
-   PROMOTION
-========================================================= */
-
-function shouldPromote(
-    piece,
-    r,
-    c
-) {
-
-    if (
-        !piece ||
-        piece.type !== "p"
-    ) {
-        return false;
-    }
-
-    return (
-        PROMOTION_TEST[piece.player]?.(
-            r,
-            c
-        ) === true
-    );
-}
-
-function promotePiece(
-    piece
-) {
-
-    return {
-        ...piece,
-        type: "q",
-        promoted: true,
-        moved: true
-    };
-}
-
-/* =========================================================
-   PSEUDO-LEGAL MOVES
-========================================================= */
-
-function getPseudoMoves(
-    board,
-    r,
-    c,
-    attackOnly = false
-) {
-
-    const piece =
-        board?.[r]?.[c];
-
-    if (
-        !piece ||
-        piece.player === "gray"
-    ) {
-        return [];
-    }
-
-    const moves = [];
-
-    function valid(row, col) {
-        return isValidSquare(
-            row,
-            col
-        );
-    }
-
-    function add(row, col) {
-
-        if (!valid(row, col)) {
-            return;
-        }
-
-        const target =
-            board[row][col];
-
-        /*
-         * Dead pieces are inactive but still occupy squares.
-         */
-        if (
-            target &&
-            target.player === "gray"
-        ) {
-            return;
-        }
-
-        if (
-            !target ||
-            target.player !== piece.player
-        ) {
-
-            moves.push({
-                r: row,
-                c: col
-            });
-        }
-    }
-
-    /* ---------------- PAWN ---------------- */
-
-    if (
-        piece.type === "p"
-    ) {
-
-        const dir =
-            PAWN_DIRECTIONS[
-                piece.player
-            ];
-
-        if (!dir) {
-            return [];
-        }
-
-        /*
-         * Attack map for check detection.
-         */
-        if (attackOnly) {
-
-            const diagonals =
-                dir.r !== 0
-                    ? [
-                        [dir.r, -1],
-                        [dir.r, 1]
-                    ]
-                    : [
-                        [-1, dir.c],
-                        [1, dir.c]
-                    ];
-
-            diagonals.forEach(
-                ([dr, dc]) => {
-
-                    const nr =
-                        r + dr;
-
-                    const nc =
-                        c + dc;
-
-                    if (
-                        valid(nr, nc)
-                    ) {
-
-                        moves.push({
-                            r: nr,
-                            c: nc
-                        });
-                    }
-                }
-            );
-
-            return moves;
-        }
-
-        const nr =
-            r + dir.r;
-
-        const nc =
-            c + dir.c;
-
-        /*
-         * Forward movement requires an empty square.
-         */
-        if (
-            valid(nr, nc) &&
-            !board[nr][nc]
-        ) {
-
-            moves.push({
-                r: nr,
-                c: nc
-            });
-
-            /*
-             * Two-square first move.
-             */
-            if (!piece.moved) {
-
-                const nr2 =
-                    r + dir.r * 2;
-
-                const nc2 =
-                    c + dir.c * 2;
-
-                if (
-                    valid(nr2, nc2) &&
-                    !board[nr2][nc2]
-                ) {
-
-                    moves.push({
-                        r: nr2,
-                        c: nc2
-                    });
-                }
-            }
-        }
-
-        /*
-         * Captures.
-         */
-        const captures =
-            dir.r !== 0
-                ? [
-                    [dir.r, -1],
-                    [dir.r, 1]
-                ]
-                : [
-                    [-1, dir.c],
-                    [1, dir.c]
-                ];
-
-        captures.forEach(
-            ([dr, dc]) => {
-
-                const cr =
-                    r + dr;
-
-                const cc =
-                    c + dc;
-
-                if (
-                    !valid(cr, cc)
-                ) {
-                    return;
-                }
-
-                const target =
-                    board[cr][cc];
-
-                if (
-                    target &&
-                    target.player !== piece.player &&
-                    target.player !== "gray"
-                ) {
-
-                    /*
-                     * Kings are never captured directly.
-                     * A king is checkmated instead.
-                     */
-                    if (
-                        target.type !== "k"
-                    ) {
-
-                        moves.push({
-                            r: cr,
-                            c: cc
-                        });
-                    }
-                }
-            }
-        );
-
-        return moves;
-    }
-
-    /* ---------------- KNIGHT ---------------- */
-
-    if (
-        piece.type === "n"
-    ) {
-
-        const offsets = [
-            [-2,-1],
-            [-2,1],
-            [-1,-2],
-            [-1,2],
-            [1,-2],
-            [1,2],
-            [2,-1],
-            [2,1]
-        ];
-
-        offsets.forEach(
-            ([dr, dc]) => {
-
-                const nr =
-                    r + dr;
-
-                const nc =
-                    c + dc;
-
-                if (!valid(nr, nc)) {
-                    return;
-                }
-
-                const target =
-                    board[nr][nc];
-
-                if (
-                    target &&
-                    target.player === "gray"
-                ) {
-                    return;
-                }
-
-                /*
-                 * Kings are attacked but never captured.
-                 */
-                if (
-                    target &&
-                    target.type === "k" &&
-                    !attackOnly
-                ) {
-                    return;
-                }
-
-                if (
-                    !target ||
-                    target.player !== piece.player
-                ) {
-
-                    moves.push({
-                        r: nr,
-                        c: nc
-                    });
-                }
-            }
-        );
-
-        return moves;
-    }
-
-    /* ---------------- KING ---------------- */
-
-    if (
-        piece.type === "k"
-    ) {
-
-        for (
-            let dr = -1;
-            dr <= 1;
-            dr++
-        ) {
-
-            for (
-                let dc = -1;
-                dc <= 1;
-                dc++
-            ) {
-
-                if (
-                    dr === 0 &&
-                    dc === 0
-                ) {
-                    continue;
-                }
-
-                const nr =
-                    r + dr;
-
-                const nc =
-                    c + dc;
-
-                if (!valid(nr, nc)) {
-                    continue;
-                }
-
-                const target =
-                    board[nr][nc];
-
-                if (
-                    target &&
-                    target.player === "gray"
-                ) {
-                    continue;
-                }
-
-                if (
-                    target &&
-                    target.type === "k" &&
-                    !attackOnly
-                ) {
-                    continue;
-                }
-
-                if (
-                    !target ||
-                    target.player !== piece.player
-                ) {
-
-                    moves.push({
-                        r: nr,
-                        c: nc
-                    });
-                }
-            }
-        }
-
-        return moves;
-    }
-
-    /* ---------------- SLIDING PIECES ---------------- */
-
-    let directions = [];
-
-    if (
-        piece.type === "b"
-    ) {
-
-        directions = [
-            [1,1],
-            [1,-1],
-            [-1,1],
-            [-1,-1]
-        ];
-    }
-
-    if (
-        piece.type === "r"
-    ) {
-
-        directions = [
-            [1,0],
-            [-1,0],
-            [0,1],
-            [0,-1]
-        ];
-    }
-
-    if (
-        piece.type === "q"
-    ) {
-
-        directions = [
-            [1,1],
-            [1,-1],
-            [-1,1],
-            [-1,-1],
-            [1,0],
-            [-1,0],
-            [0,1],
-            [0,-1]
-        ];
-    }
-
-    for (
-        const [dr, dc]
-        of directions
-    ) {
-
-        let nr =
-            r + dr;
-
-        let nc =
-            c + dc;
-
-        while (
-            valid(nr, nc)
-        ) {
-
-            const target =
-                board[nr][nc];
-
-            if (!target) {
-
-                moves.push({
-                    r: nr,
-                    c: nc
-                });
-
-            } else {
-
-                /*
-                 * Dead pieces block movement.
-                 */
-                if (
-                    target.player === "gray"
-                ) {
-                    break;
-                }
-
-                /*
-                 * Kings are attacked for check detection,
-                 * but never captured directly.
-                 */
-                if (
-                    target.player !== piece.player
-                ) {
-
-                    if (
-                        target.type !== "k" ||
-                        attackOnly
-                    ) {
-
-                        moves.push({
-                            r: nr,
-                            c: nc
-                        });
-                    }
-                }
-
-                break;
-            }
-
-            nr += dr;
-            nc += dc;
-        }
-    }
-
-    return moves;
-}
-
-/* =========================================================
-   CHECK DETECTION
-========================================================= */
-
-function findKing(
-    board,
-    player
-) {
-
-    for (
-        let r = 0;
-        r < BOARD_SIZE;
-        r++
-    ) {
-
-        for (
-            let c = 0;
-            c < BOARD_SIZE;
-            c++
-        ) {
-
-            const piece =
-                board[r][c];
-
-            if (
-                piece &&
-                piece.player === player &&
-                piece.type === "k"
-            ) {
-
-                return {
-                    r,
-                    c
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
-function isSquareAttacked(
-    board,
-    r,
-    c,
-    attacker
-) {
-
-    for (
-        let pr = 0;
-        pr < BOARD_SIZE;
-        pr++
-    ) {
-
-        for (
-            let pc = 0;
-            pc < BOARD_SIZE;
-            pc++
-        ) {
-
-            const piece =
-                board[pr][pc];
-
-            if (
-                !piece ||
-                piece.player !== attacker
-            ) {
-                continue;
-            }
-
-            const attacks =
-                getPseudoMoves(
-                    board,
-                    pr,
-                    pc,
-                    true
-                );
-
-            if (
-                attacks.some(
-                    move =>
-                        move.r === r &&
-                        move.c === c
-                )
-            ) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-function isPlayerInCheck(
-    board,
-    player
-) {
-
-    const king =
-        findKing(
-            board,
-            player
-        );
-
-    if (!king) {
-        return true;
-    }
-
-    for (
-        const opponent
-        of PLAYERS
-    ) {
-
-        if (
-            opponent === player
-        ) {
-            continue;
-        }
-
-        /*
-         * Gray pieces are inactive.
-         */
-        const hasOpponentPieces =
-            board.some(
-                row =>
-                    row.some(
-                        piece =>
-                            piece &&
-                            piece.player === opponent
-                    )
-            );
-
-        if (!hasOpponentPieces) {
-            continue;
-        }
-
-        if (
-            isSquareAttacked(
-                board,
-                king.r,
-                king.c,
-                opponent
-            )
-        ) {
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/* =========================================================
-   LEGAL MOVE ENGINE
-========================================================= */
-
-function getLegalMoves(
-    board,
-    r,
-    c,
-    player
-) {
-
-    const piece =
-        board?.[r]?.[c];
-
-    if (
-        !piece ||
-        piece.player !== player ||
-        piece.player === "gray"
-    ) {
-        return [];
-    }
-
-    const pseudo =
-        getPseudoMoves(
-            board,
-            r,
-            c,
-            false
-        );
-
-    const legal = [];
-
-    for (
-        const move
-        of pseudo
-    ) {
-
-        const next =
-            cloneBoard(board);
-
-        const movingPiece = {
-            ...next[r][c],
-            moved: true
-        };
-
-        next[r][c] =
-            null;
-
-        /*
-         * Never capture a king.
-         */
-        const target =
-            next[move.r][move.c];
-
-        if (
-            target &&
-            target.type === "k"
-        ) {
-            continue;
-        }
-
-        /*
-         * Promotion happens during the simulated move.
-         */
-        next[move.r][move.c] =
-            shouldPromote(
-                movingPiece,
-                move.r,
-                move.c
-            )
-                ? promotePiece(
-                    movingPiece
-                )
-                : movingPiece;
-
-        /*
-         * You cannot leave your own king in check.
-         */
-        if (
-            !isPlayerInCheck(
-                next,
-                player
-            )
-        ) {
-
-            legal.push(move);
-        }
-    }
-
-    return legal;
-}
-
-function getValidMovesForPiece(
-    r,
-    c
-) {
-
-    const piece =
-        localState.board?.[r]?.[c];
-
-    if (!piece) {
-        return [];
-    }
-
-    return getLegalMoves(
-        localState.board,
-        r,
-        c,
-        piece.player
-    );
-}
-
-function getAllLegalMoves(
-    board,
-    player
-) {
-
-    const all = [];
-
-    for (
-        let r = 0;
-        r < BOARD_SIZE;
-        r++
-    ) {
-
-        for (
-            let c = 0;
-            c < BOARD_SIZE;
-            c++
-        ) {
-
-            const piece =
-                board[r][c];
-
-            if (
-                !piece ||
-                piece.player !== player
-            ) {
-                continue;
-            }
-
-            const moves =
-                getLegalMoves(
-                    board,
-                    r,
-                    c,
-                    player
-                );
-
-            moves.forEach(
-                to => {
-
-                    all.push({
-                        from: {
-                            r,
-                            c
-                        },
-
-                        to,
-
-                        piece
-                    });
-                }
-            );
-        }
-    }
-
-    return all;
-}
-
-/* =========================================================
    RENDER
 ========================================================= */
 
-function renderBoard() {
+function render(){
 
-    boardEl.innerHTML = "";
+    const boardEl=
+        $("board");
 
-    boardEl.style.transform =
-        `rotate(${localState.boardRotation}deg)`;
+    boardEl.innerHTML="";
 
-    const lastMove =
-        localState.lastMove;
+    boardEl.style.transform=
+        `rotate(${S.rotation}deg)`;
 
-    const activePlayer =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
+    const active=
+        P[S.turn];
 
-    const activeInCheck =
-        isPlayerInCheck(
-            localState.board,
-            activePlayer
+    const activeCheck=
+        !S.gameOver&&
+        inCheck(
+            S.board,
+            active
         );
 
-    for (
-        let r = 0;
-        r < BOARD_SIZE;
+    for(
+        let r=0;
+        r<N;
         r++
-    ) {
+    ){
 
-        for (
-            let c = 0;
-            c < BOARD_SIZE;
+        for(
+            let c=0;
+            c<N;
             c++
-        ) {
+        ){
 
-            const square =
+            const square=
                 document.createElement(
                     "div"
                 );
 
-            square.dataset.row = r;
-            square.dataset.col = c;
+            square.dataset.row=r;
+            square.dataset.col=c;
 
-            if (
-                !isValidSquare(r, c)
-            ) {
+            if(
+                !valid(r,c)
+            ){
 
-                square.className =
-                    "square square-out-of-bounds";
+                square.className=
+                    "square off";
 
                 boardEl.appendChild(
                     square
@@ -2160,162 +1951,146 @@ function renderBoard() {
                 continue;
             }
 
-            square.className =
-                "square " +
+            square.className=
+                "square "+
                 (
-                    (r + c) % 2 === 0
-                        ? "square-light"
-                        : "square-dark"
+                    (r+c)%2
+                        ? "dark"
+                        : "light"
                 );
 
-            if (
-                localState.selectedSquare &&
-                localState.selectedSquare.r === r &&
-                localState.selectedSquare.c === c
-            ) {
+            if(
+                S.selected?.r===r&&
+                S.selected?.c===c
+            ){
 
                 square.classList.add(
-                    "square-selected"
+                    "selected"
                 );
             }
 
-            if (
-                lastMove &&
+            if(
+                S.last&&
                 (
                     (
-                        lastMove.from.r === r &&
-                        lastMove.from.c === c
-                    ) ||
+                        S.last.from?.r===r&&
+                        S.last.from?.c===c
+                    )||
                     (
-                        lastMove.to.r === r &&
-                        lastMove.to.c === c
+                        S.last.to?.r===r&&
+                        S.last.to?.c===c
                     )
                 )
-            ) {
+            ){
 
                 square.classList.add(
-                    "square-last-move"
+                    "last"
                 );
             }
 
-            /*
-             * Highlight the king if the active player is
-             * currently in check.
-             */
-            if (
-                activeInCheck &&
-                localState.board[r][c] &&
-                localState.board[r][c].player === activePlayer &&
-                localState.board[r][c].type === "k"
-            ) {
+            if(
+                S.last?.capture&&
+                S.last.to?.r===r&&
+                S.last.to?.c===c
+            ){
 
                 square.classList.add(
-                    "square-check"
+                    "flash"
                 );
             }
 
-            const target =
-                localState.validMoves.some(
-                    move =>
-                        move.r === r &&
-                        move.c === c
+            if(
+                activeCheck&&
+                S.board[r][c]?.player===active&&
+                S.board[r][c]?.type==="k"
+            ){
+
+                square.classList.add(
+                    "check"
                 );
-
-            if (target) {
-
-                if (
-                    localState.board[r][c]
-                ) {
-
-                    const ring =
-                        document.createElement(
-                            "div"
-                        );
-
-                    ring.className =
-                        "capture-ring";
-
-                    square.appendChild(
-                        ring
-                    );
-
-                } else {
-
-                    const dot =
-                        document.createElement(
-                            "div"
-                        );
-
-                    dot.className =
-                        "move-dot";
-
-                    square.appendChild(
-                        dot
-                    );
-                }
             }
 
-            const piece =
-                localState.board[r][c];
+            if(
+                S.moves.some(
+                    x =>
+                        x.r===r&&
+                        x.c===c
+                )
+            ){
 
-            if (piece) {
-
-                const wrapper =
+                const marker=
                     document.createElement(
                         "div"
                     );
 
-                wrapper.className =
-                    "piece-wrapper";
+                marker.className=
+                    S.board[r][c]
+                        ? "ring"
+                        : "dot";
 
-                wrapper.style.transform =
-                    `rotate(-${localState.boardRotation}deg)`;
+                square.appendChild(
+                    marker
+                );
+            }
 
-                const isDestination =
-                    lastMove &&
-                    lastMove.to &&
-                    lastMove.to.r === r &&
-                    lastMove.to.c === c;
+            const piece=
+                S.board[r][c];
 
-                if (isDestination) {
+            if(piece){
 
-                    wrapper.classList.add(
-                        "piece-arrive"
+                const wrapper=
+                    document.createElement(
+                        "div"
                     );
 
-                    if (
-                        lastMove.promotion
-                    ) {
+                wrapper.className=
+                    "piece";
+
+                wrapper.style.transform=
+                    `rotate(-${S.rotation}deg)`;
+
+                if(
+                    S.last?.to?.r===r&&
+                    S.last?.to?.c===c
+                ){
+
+                    wrapper.classList.add(
+                        "arrive"
+                    );
+
+                    if(
+                        S.last.promotion
+                    ){
 
                         wrapper.classList.add(
-                            "promotion-piece"
+                            "promo"
                         );
                     }
                 }
 
-                wrapper.innerHTML =
-                    getPieceSVG(
+                wrapper.innerHTML=
+                    svg(
                         piece.type,
                         piece.player
                     );
 
-                if (
+                if(
                     piece.promoted
-                ) {
+                ){
 
-                    const badge =
+                    const badge=
                         document.createElement(
                             "div"
                         );
 
-                    badge.className =
-                        "promotion-one";
+                    badge.className=
+                        "badge";
 
-                    badge.textContent =
+                    badge.textContent=
                         "1";
 
-                    badge.style.transform =
-                        `rotate(-${localState.boardRotation}deg)`;
+                    badge.style.transform=
+                        `rotate(-${S.rotation}deg)`;
 
                     wrapper.appendChild(
                         badge
@@ -2329,17 +2104,16 @@ function renderBoard() {
 
             square.addEventListener(
                 "pointerup",
-                event => {
+                e=>{
+                    e.preventDefault();
 
-                    event.preventDefault();
-
-                    handleSquareClick(
+                    clickSquare(
                         r,
                         c
                     );
                 },
                 {
-                    passive: false
+                    passive:false
                 }
             );
 
@@ -2353,71 +2127,69 @@ function renderBoard() {
 }
 
 /* =========================================================
-   PLAYER INPUT
+   HUMAN INPUT
 ========================================================= */
 
-function handleSquareClick(
+function clickSquare(
     r,
     c
-) {
+){
 
-    const active =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
-
-    if (
-        localState.mySeat !== active
-    ) {
+    if(
+        S.gameOver
+    ){
         return;
     }
 
-    if (
-        localState.bots[active]
-    ) {
+    const active=
+        P[S.turn];
+
+    if(
+        S.seat!==active||
+        S.bots[active]||
+        S.elim[active]
+    ){
         return;
     }
 
-    if (
-        localState.eliminated[active]
-    ) {
-        return;
-    }
+    if(
+        S.selected
+    ){
 
-    if (
-        localState.selectedSquare
-    ) {
-
-        const move =
-            localState.validMoves.find(
-                m =>
-                    m.r === r &&
-                    m.c === c
+        const chosen=
+            S.moves.find(
+                x =>
+                    x.r===r&&
+                    x.c===c
             );
 
-        if (move) {
+        if(chosen){
 
-            const from = {
-                r:
-                    localState.selectedSquare.r,
-                c:
-                    localState.selectedSquare.c
+            const from={
+                ...S.selected
             };
 
-            const to = {
+            const to={
                 r,
                 c
             };
 
-            localState.selectedSquare =
+            if(
+                chosen.castle
+            ){
+
+                to.castle=
+                    chosen.castle;
+            }
+
+            S.selected=
                 null;
 
-            localState.validMoves =
-                [];
+            S.moves=[];
 
-            renderBoard();
+            render();
 
-            dispatchMove(
+            sendMove(
                 from,
                 to,
                 false
@@ -2427,239 +2199,263 @@ function handleSquareClick(
         }
     }
 
-    const piece =
-        localState.board[r][c];
+    const piece=
+        S.board[r][c];
 
-    if (
-        piece &&
-        piece.player === active
-    ) {
+    if(
+        piece?.player===active
+    ){
 
-        localState.selectedSquare = {
+        S.selected={
             r,
             c
         };
 
-        localState.validMoves =
-            getValidMovesForPiece(
+        S.moves=
+            legal(
+                S.board,
                 r,
-                c
+                c,
+                active
             );
 
-    } else {
+    }else{
 
-        localState.selectedSquare =
-            null;
-
-        localState.validMoves =
-            [];
+        S.selected=null;
+        S.moves=[];
     }
 
-    renderBoard();
+    render();
 }
 
 /* =========================================================
-   FIREBASE MOVE
+   FIREBASE MOVE TRANSACTION
 ========================================================= */
 
-function dispatchMove(
+function sendMove(
     from,
     to,
-    isBot = false
-) {
+    isBot
+){
 
-    if (!roomRef) {
+    if(!ref){
         return;
     }
 
-    roomRef.transaction(
-        data => {
+    ref.transaction(
+        data=>{
 
-            if (!data) {
+            if(
+                !data||
+                data.gameOver
+            ){
                 return;
             }
 
             let board;
 
-            try {
+            try{
 
-                board =
+                board=
                     JSON.parse(
                         data.boardStr
                     );
 
-            } catch {
+            }catch{
 
                 return;
             }
 
-            const currentIdx =
+            const idx=
                 Number(
-                    data.currentPlayerIdx || 0
-                );
+                    data.turn
+                )||0;
 
-            const player =
-                PLAYERS[
-                    currentIdx
-                ];
+            const player=
+                P[idx];
 
-            const seats =
-                data.seats || {};
+            const elim={
+                red:false,
+                blue:false,
+                yellow:false,
+                green:false,
+                ...(data.elim||{})
+            };
 
-            const bots =
-                data.bots || {};
+            if(
+                elim[player]
+            ){
+                return;
+            }
 
-            const eliminated =
-                data.eliminated || {};
-
-            /*
-             * Human must own the active seat.
-             */
-            const humanAuthorized =
-                seats[player] === userId;
-
-            /*
-             * ONLY the creator controls bots.
-             */
-            const botAuthorized =
-                bots[player] === true &&
-                data.hostId === userId;
-
-            if (
+            const authorized=
                 isBot
-                    ? !botAuthorized
-                    : !humanAuthorized
-            ) {
+                    ? data.bots?.[player]===true&&
+                      data.host===uid
+                    : data.seats?.[player]===uid;
+
+            if(!authorized){
                 return;
             }
 
-            if (
-                eliminated[player]
-            ) {
+            const piece=
+                board[from.r]?.[from.c];
+
+            if(
+                !piece||
+                piece.player!==player
+            ){
                 return;
             }
 
-            const piece =
-                board?.[from.r]?.[from.c];
-
-            if (
-                !piece ||
-                piece.player !== player
-            ) {
-                return;
-            }
-
-            /*
-             * Recalculate legal moves from the Firebase
-             * transaction's actual board.
-             *
-             * This is the important anti-glitch check.
-             */
-            const legalMoves =
-                getLegalMoves(
+            const chosen=
+                legal(
                     board,
                     from.r,
                     from.c,
                     player
+                ).find(
+                    m =>
+                        m.r===to.r&&
+                        m.c===to.c&&
+                        !!m.castle===!!to.castle&&
+                        (
+                            !m.castle||
+                            m.castle===to.castle
+                        )
                 );
 
-            const legal =
-                legalMoves.some(
-                    move =>
-                        move.r === to.r &&
-                        move.c === to.c
-                );
-
-            if (!legal) {
+            if(!chosen){
                 return;
             }
 
-            const target =
-                board[to.r][to.c];
+            const captured=
+                chosen.castle
+                    ? null
+                    : board[
+                        chosen.r
+                    ][
+                        chosen.c
+                    ];
 
-            if (
-                target &&
-                target.type === "k"
-            ) {
-                return;
-            }
+            const before=
+                board;
 
-            let movingPiece = {
-                ...piece,
-                moved: true
-            };
-
-            board[from.r][from.c] =
-                null;
-
-            /*
-             * Automatic Chess.com-style FFA promotion.
-             */
-            if (
-                shouldPromote(
-                    movingPiece,
-                    to.r,
-                    to.c
-                )
-            ) {
-
-                movingPiece =
-                    promotePiece(
-                        movingPiece
-                    );
-            }
-
-            board[to.r][to.c] =
-                movingPiece;
-
-            const nextEliminated = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...eliminated
-            };
-
-            /*
-             * Move the turn clockwise.
-             */
-            let nextIdx =
-                nextLivingPlayer(
-                    currentIdx,
-                    nextEliminated
+            const after=
+                apply(
+                    board,
+                    from,
+                    chosen
                 );
 
-            /*
-             * Record the move.
-             */
-            return {
+            const moving=
+                after[
+                    chosen.r
+                ][
+                    chosen.c
+                ];
+
+            const scores={
+                red:0,
+                blue:0,
+                yellow:0,
+                green:0,
+                ...(data.scores||{})
+            };
+
+            const capturePoints=
+                captureValue(
+                    captured
+                );
+
+            const checkData=
+                simultaneousCheckBonus(
+                    before,
+                    after,
+                    player,
+                    moving,
+                    elim
+                );
+
+            const points=
+                capturePoints+
+                checkData.points;
+
+            scores[player]=
+                (
+                    Number(
+                        scores[player]
+                    )||0
+                )+
+                points;
+
+            const nextElim={
+                ...elim
+            };
+
+            const nextIdx=
+                nextTurn(
+                    idx,
+                    nextElim
+                );
+
+            return{
 
                 ...data,
 
                 boardStr:
                     JSON.stringify(
-                        board
+                        after
                     ),
 
-                currentPlayerIdx:
+                turn:
                     nextIdx,
 
-                eliminated:
-                    nextEliminated,
+                elim:
+                    nextElim,
 
-                lastMove: {
+                scores,
 
-                    from,
+                last:{
 
-                    to,
+                    from:{
+                        ...from
+                    },
+
+                    to:{
+                        r:chosen.r,
+                        c:chosen.c
+                    },
 
                     player,
 
-                    promotion:
-                        movingPiece.promoted === true,
-
                     capture:
-                        !!target,
+                        !!captured,
+
+                    capturedPlayer:
+                        captured?.player||
+                        null,
+
+                    capturedType:
+                        captured?.type||
+                        null,
+
+                    castle:
+                        chosen.castle||
+                        null,
+
+                    promotion:
+                        !!moving.promoted,
+
+                    points,
+
+                    capturePoints,
+
+                    checkPoints:
+                        checkData.points,
+
+                    newChecks:
+                        checkData.newChecks,
 
                     timestamp:
                         firebase.database
@@ -2670,32 +2466,312 @@ function dispatchMove(
 
         },
 
-        (error, committed) => {
+        (
+            error,
+            committed
+        )=>{
 
-            if (
-                error
-            ) {
+            if(error){
 
                 console.error(
                     "Move error:",
                     error
                 );
+            }
 
-                if (isBot) {
-                    botRunning = false;
-                    botSignature = null;
-                }
+            if(isBot){
+
+                botPending=false;
+                botSig=null;
+
+                scheduleController();
+            }
+        }
+    );
+}
+
+/* =========================================================
+   ELIMINATION / CHECKMATE / STALEMATE
+========================================================= */
+
+function eliminateCurrent(
+    player,
+    reason
+){
+
+    if(!ref){
+        return;
+    }
+
+    ref.transaction(
+        data=>{
+
+            if(
+                !data||
+                data.gameOver||
+                data.host!==uid
+            ){
+                return;
+            }
+
+            const idx=
+                Number(
+                    data.turn
+                )||0;
+
+            if(
+                P[idx]!==player
+            ){
+                return;
+            }
+
+            let board;
+
+            try{
+
+                board=
+                    JSON.parse(
+                        data.boardStr
+                    );
+
+            }catch{
 
                 return;
             }
 
-            if (
-                !committed &&
-                isBot
-            ) {
+            const e={
+                red:false,
+                blue:false,
+                yellow:false,
+                green:false,
+                ...(data.elim||{})
+            };
 
-                botRunning = false;
-                botSignature = null;
+            if(
+                e[player]
+            ){
+                return;
+            }
+
+            /*
+             * Recompute from authoritative data.
+             */
+            const legalNow=
+                allLegal(
+                    board,
+                    player
+                );
+
+            if(
+                legalNow.length
+            ){
+                return;
+            }
+
+            const check=
+                inCheck(
+                    board,
+                    player
+                );
+
+            const actualReason=
+                check
+                    ? "checkmate"
+                    : "stalemate";
+
+            if(
+                reason!==actualReason
+            ){
+
+                reason=
+                    actualReason;
+            }
+
+            const scores={
+                red:0,
+                blue:0,
+                yellow:0,
+                green:0,
+                ...(data.scores||{})
+            };
+
+            let awardedTo=
+                null;
+
+            if(
+                reason==="checkmate"
+            ){
+
+                const k=
+                    king(
+                        board,
+                        player
+                    );
+
+                if(k){
+
+                    const lastPlayer=
+                        data.last?.player;
+
+                    if(
+                        lastPlayer&&
+                        lastPlayer!==player&&
+                        P.includes(lastPlayer)&&
+                        !e[lastPlayer]&&
+                        attacks(
+                            board,
+                            k.r,
+                            k.c,
+                            lastPlayer
+                        )
+                    ){
+
+                        awardedTo=
+                            lastPlayer;
+
+                    }else{
+
+                        awardedTo=
+                            P.find(
+                                o =>
+                                    o!==player&&
+                                    !e[o]&&
+                                    attacks(
+                                        board,
+                                        k.r,
+                                        k.c,
+                                        o
+                                    )
+                            )||
+                            null;
+                    }
+
+                    if(awardedTo){
+
+                        scores[awardedTo]=
+                            (
+                                Number(
+                                    scores[awardedTo]
+                                )||0
+                            )+
+                            20;
+                    }
+                }
+
+            }else{
+
+                /*
+                 * Stalemate gives the stalemated player 20.
+                 */
+                scores[player]=
+                    (
+                        Number(
+                            scores[player]
+                        )||0
+                    )+
+                    20;
+            }
+
+            e[player]=
+                true;
+
+            for(
+                let r=0;
+                r<N;
+                r++
+            ){
+
+                for(
+                    let c=0;
+                    c<N;
+                    c++
+                ){
+
+                    const piece=
+                        board[r][c];
+
+                    if(
+                        piece?.player===player
+                    ){
+
+                        board[r][c]={
+                            ...piece,
+                            player:"gray",
+                            dead:true
+                        };
+                    }
+                }
+            }
+
+            const alive=
+                P.filter(
+                    x =>
+                        !e[x]
+                );
+
+            const gameOver=
+                alive.length<=1;
+
+            const nextIdx=
+                gameOver
+                    ? idx
+                    : nextTurn(
+                        idx,
+                        e
+                    );
+
+            return{
+
+                ...data,
+
+                boardStr:
+                    JSON.stringify(
+                        board
+                    ),
+
+                elim:e,
+
+                scores,
+
+                turn:
+                    nextIdx,
+
+                gameOver,
+
+                last:{
+
+                    ...(data.last||{}),
+
+                    elimination:
+                        player,
+
+                    eliminationReason:
+                        reason,
+
+                    scoringPlayer:
+                        awardedTo||
+                        player,
+
+                    points:
+                        20,
+
+                    timestamp:
+                        firebase.database
+                            .ServerValue
+                            .TIMESTAMP
+                }
+            };
+
+        },
+
+        error=>{
+
+            if(error){
+
+                console.error(
+                    "Elimination error:",
+                    error
+                );
             }
         }
     );
@@ -2705,1504 +2781,1213 @@ function dispatchMove(
    BOT CONTROLLER
 ========================================================= */
 
-function isHost() {
+function controllerSignature(){
 
-    return (
-        localState.hostId &&
-        localState.hostId === userId
+    return JSON.stringify([
+        S.turn,
+        S.last?.from,
+        S.last?.to,
+        S.last?.elimination,
+        S.elim,
+        S.gameOver
+    ]);
+}
+
+function isHost(){
+
+    return(
+        S.host===uid&&
+        !S.gameOver
     );
 }
 
-function getTurnSignature() {
+function scheduleController(){
 
-    return [
-        localState.currentPlayerIdx,
-        localState.lastMove?.timestamp || "start"
-    ].join(":");
-}
-
-function scheduleController() {
-
-    if (!isHost()) {
+    if(
+        !isHost()||
+        controllerTimer||
+        botPending
+    ){
         return;
     }
 
-    if (controllerTimer) {
-        clearTimeout(
-            controllerTimer
-        );
-    }
-
-    controllerTimer =
+    controllerTimer=
         setTimeout(
             controllerTick,
-            300
+            250
         );
 }
 
-function controllerTick() {
+function controllerTick(){
 
-    controllerTimer = null;
+    controllerTimer=null;
 
-    if (!isHost()) {
+    if(!isHost()){
         return;
     }
 
-    const player =
-        PLAYERS[
-            localState.currentPlayerIdx
+    const player=
+        P[S.turn];
+
+    if(
+        S.elim[player]
+    ){
+        return;
+    }
+
+    const legalMoves=
+        allLegal(
+            S.board,
+            player
+        );
+
+    if(
+        !legalMoves.length
+    ){
+
+        eliminateCurrent(
+            player,
+            inCheck(
+                S.board,
+                player
+            )
+                ? "checkmate"
+                : "stalemate"
+        );
+
+        return;
+    }
+
+    if(
+        S.bots[player]
+    ){
+
+        scheduleBot(
+            player
+        );
+    }
+}
+
+function botScoreMove(
+    move,
+    player
+){
+
+    const target=
+        S.board[
+            move.to.r
+        ]?.[
+            move.to.c
         ];
 
-    if (
-        localState.eliminated[player]
-    ) {
-        return;
+    let score=
+        Math.random()*2;
+
+    if(target){
+
+        score+=
+            captureValue(
+                target
+            )*12;
     }
 
-    /*
-     * Before a bot moves, verify that the active player
-     * actually has legal moves.
-     */
-    const legalMoves =
-        getAllLegalMoves(
-            localState.board,
-            player
+    if(
+        move.piece.type==="p"&&
+        shouldPromote(
+            move.piece,
+            move.to.r,
+            move.to.c
+        )
+    ){
+
+        score+=100;
+    }
+
+    if(
+        move.castle
+    ){
+
+        score+=2;
+    }
+
+    const next=
+        apply(
+            S.board,
+            move.from,
+            move
         );
 
-    /*
-     * If there are no legal moves, this player is either
-     * checkmated or stalemated.
-     *
-     * In FFA both result in elimination.
-     */
-    if (
-        legalMoves.length === 0
-    ) {
-
-        eliminatePlayer(
+    const afterChecks=
+        checkedPlayers(
+            next,
             player,
-            isPlayerInCheck(
-                localState.board,
-                player
-            )
-                ? "checkmate"
-                : "stalemate"
-        );
+            S.elim
+        ).length;
 
-        return;
+    const beforeChecks=
+        checkedPlayers(
+            S.board,
+            player,
+            S.elim
+        ).length;
+
+    if(
+        afterChecks>
+        beforeChecks
+    ){
+
+        score+=
+            (
+                afterChecks>=3
+                    ? 25
+                    : afterChecks>=2
+                        ? 10
+                        : 3
+            );
     }
 
-    if (
-        localState.bots[player]
-    ) {
+    if(
+        move.piece.type==="p"
+    ){
 
-        scheduleBotMove(
-            player
-        );
+        const d=
+            DIR[player];
+
+        score+=
+            (
+                (
+                    move.to.r-
+                    move.from.r
+                )*
+                d.r
+            )+
+            (
+                (
+                    move.to.c-
+                    move.from.c
+                )*
+                d.c
+            )*
+            1.5;
     }
+
+    if(
+        move.piece.type==="k"&&
+        !move.castle
+    ){
+
+        score-=2;
+    }
+
+    return score;
 }
 
-/* =========================================================
-   ELIMINATION
-========================================================= */
-
-function eliminatePlayer(
-    player,
-    reason
-) {
-
-    if (!roomRef) {
-        return;
-    }
-
-    roomRef.transaction(
-        data => {
-
-            if (!data) {
-                return;
-            }
-
-            if (
-                data.hostId !== userId
-            ) {
-                return;
-            }
-
-            const currentIdx =
-                Number(
-                    data.currentPlayerIdx || 0
-                );
-
-            const currentPlayer =
-                PLAYERS[
-                    currentIdx
-                ];
-
-            if (
-                currentPlayer !== player
-            ) {
-                return;
-            }
-
-            const eliminated = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...(data.eliminated || {})
-            };
-
-            if (
-                eliminated[player]
-            ) {
-                return;
-            }
-
-            eliminated[player] =
-                true;
-
-            const board =
-                JSON.parse(
-                    data.boardStr
-                );
-
-            /*
-             * Checkmated/stalemated armies become grey.
-             */
-            for (
-                let r = 0;
-                r < BOARD_SIZE;
-                r++
-            ) {
-
-                for (
-                    let c = 0;
-                    c < BOARD_SIZE;
-                    c++
-                ) {
-
-                    const piece =
-                        board[r][c];
-
-                    if (
-                        piece &&
-                        piece.player === player
-                    ) {
-
-                        board[r][c] = {
-                            ...piece,
-                            player: "gray",
-                            dead: true
-                        };
-                    }
-                }
-            }
-
-            const nextIdx =
-                nextLivingPlayer(
-                    currentIdx,
-                    eliminated
-                );
-
-            return {
-
-                ...data,
-
-                boardStr:
-                    JSON.stringify(
-                        board
-                    ),
-
-                eliminated,
-
-                currentPlayerIdx:
-                    nextIdx,
-
-                lastMove: {
-                    ...(data.lastMove || {}),
-                    elimination: player,
-                    eliminationReason: reason,
-                    timestamp:
-                        firebase.database
-                            .ServerValue
-                            .TIMESTAMP
-                }
-            };
-
-        }
-    );
-}
-
-/* =========================================================
-   BOT MOVE
-========================================================= */
-
-function scheduleBotMove(
+function scheduleBot(
     player
-) {
+){
 
-    if (
-        botRunning ||
-        !isHost()
-    ) {
+    if(
+        botPending||
+        !isHost()||
+        !S.bots[player]
+    ){
         return;
     }
 
-    const signature =
-        getTurnSignature();
+    const sig=
+        controllerSignature();
 
-    if (
-        botSignature === signature
-    ) {
+    if(
+        botSig===sig
+    ){
         return;
     }
 
-    botSignature =
-        signature;
+    botSig=
+        sig;
 
-    botTimer =
+    botPending=
+        true;
+
+    botTimer=
         setTimeout(
-            () => {
-
-                botTimer = null;
-
-                runBotMove(
-                    player,
-                    signature
-                );
-
-            },
-            500
-        );
-}
-
-function runBotMove(
-    player,
-    signature
-) {
-
-    if (
-        botRunning ||
-        !isHost()
-    ) {
-        return;
-    }
-
-    if (
-        PLAYERS[
-            localState.currentPlayerIdx
-        ] !== player
-    ) {
-        return;
-    }
-
-    if (
-        !localState.bots[player]
-    ) {
-        return;
-    }
-
-    if (
-        signature !==
-        getTurnSignature()
-    ) {
-        botSignature = null;
-        return;
-    }
-
-    const legalMoves =
-        getAllLegalMoves(
-            localState.board,
-            player
-        );
-
-    if (!legalMoves.length) {
-
-        botSignature = null;
-
-        eliminatePlayer(
-            player,
-            isPlayerInCheck(
-                localState.board,
-                player
-            )
-                ? "checkmate"
-                : "stalemate"
-        );
-
-        return;
-    }
-
-    /*
-     * Evaluate moves.
-     *
-     * The bot is intentionally simple, but every move
-     * here is guaranteed to come from the legal move engine.
-     */
-    const values = {
-        p: 1,
-        n: 3,
-        b: 5,
-        r: 5,
-        q: 9,
-        k: 20
-    };
-
-    const scored =
-        legalMoves.map(
-            move => {
-
-                const target =
-                    localState.board[
-                        move.to.r
-                    ][
-                        move.to.c
-                    ];
-
-                let score =
-                    Math.random() * 2;
-
-                /*
-                 * Captures.
-                 */
-                if (
-                    target &&
-                    target.player !== "gray"
-                ) {
-
-                    score +=
-                        (
-                            values[target.type] ||
-                            0
-                        ) * 12;
-                }
-
-                /*
-                 * Promotion.
-                 */
-                if (
-                    move.piece.type === "p" &&
-                    shouldPromote(
-                        move.piece,
-                        move.to.r,
-                        move.to.c
-                    )
-                ) {
-
-                    score += 100;
-                }
-
-                /*
-                 * Moving toward promotion.
-                 */
-                if (
-                    move.piece.type === "p"
-                ) {
-
-                    const dir =
-                        PAWN_DIRECTIONS[player];
-
-                    if (dir) {
-
-                        const distance =
-                            (
-                                move.to.r -
-                                move.from.r
-                            ) * dir.r +
-                            (
-                                move.to.c -
-                                move.from.c
-                            ) * dir.c;
-
-                        score +=
-                            distance * 1.5;
-                    }
-                }
-
-                /*
-                 * Don't move the king unnecessarily.
-                 */
-                if (
-                    move.piece.type === "k"
-                ) {
-
-                    score -= 2;
-                }
-
-                return {
-                    move,
-                    score
-                };
-            }
-        );
-
-    scored.sort(
-        (a, b) =>
-            b.score - a.score
-    );
-
-    /*
-     * Pick randomly from the best few moves.
-     * This keeps the bot from playing the exact same
-     * game every time while still preferring captures
-     * and promotion.
-     */
-    const topCount =
-        Math.min(
-            4,
-            scored.length
-        );
-
-    const choice =
-        scored[
-            Math.floor(
-                Math.random() *
-                topCount
-            )
-        ].move;
-
-    botRunning = true;
-
-    /*
-     * Short human-like delay.
-     */
-    setTimeout(
-        () => {
-
-            /*
-             * Recheck EVERYTHING immediately before
-             * sending the move.
-             */
-            if (
-                !isHost() ||
-                PLAYERS[
-                    localState.currentPlayerIdx
-                ] !== player ||
-                !localState.bots[player]
-            ) {
-
-                botRunning = false;
-                botSignature = null;
-                return;
-            }
-
-            /*
-             * Revalidate from the current local board.
-             */
-            const currentLegal =
-                getLegalMoves(
-                    localState.board,
-                    choice.from.r,
-                    choice.from.c,
-                    player
-                );
-
-            const stillLegal =
-                currentLegal.some(
-                    move =>
-                        move.r === choice.to.r &&
-                        move.c === choice.to.c
-                );
-
-            if (!stillLegal) {
-
-                botRunning = false;
-                botSignature = null;
-                scheduleController();
-                return;
-            }
-
-            dispatchMove(
-                choice.from,
-                choice.to,
-                true
-            );
-
-            /*
-             * Firebase's value event will provide the next
-             * turn. Do not immediately schedule another bot.
-             */
-            setTimeout(
-                () => {
-                    botRunning = false;
-                },
-                250
-            );
-
-        },
-        180
-    );
-}
-
-/* =========================================================
-   SEAT CLAIMING
-========================================================= */
-
-function claimSeat(
-    seat
-) {
-
-    if (!roomRef) {
-        return;
-    }
-
-    /*
-     * Red belongs to the creator.
-     */
-    if (
-        seat === "red"
-    ) {
-
-        if (
-            localState.seats.red === userId
-        ) {
-            return;
-        }
-
-        return;
-    }
-
-    /*
-     * Never claim a bot seat.
-     */
-    if (
-        localState.bots[seat]
-    ) {
-        return;
-    }
-
-    const seatRef =
-        roomRef.child(
-            "seats/" + seat
-        );
-
-    seatRef.transaction(
-        current => {
-
-            if (
-                current === null ||
-                current === undefined
-            ) {
-
-                return userId;
-            }
-
-            return;
-        },
-        (error, committed) => {
-
-            if (
-                error ||
-                !committed
-            ) {
-                return;
-            }
-
-            roomRef
-                .child(
-                    "bots/" + seat
-                )
-                .set(false);
-
-            localState.mySeat =
-                seat;
-
-            localState.boardRotation =
-                SEAT_ROTATIONS[seat];
-
-            localState.manualRotation =
-                false;
-
-            localState.selectedSquare =
-                null;
-
-            localState.validMoves =
-                [];
-
-            renderBoard();
-        }
-    );
-}
-
-/* =========================================================
-   ROOM CREATION
-========================================================= */
-
-function generateRoomCode() {
-
-    return Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase();
-}
-
-function createRoom(
-    botCount
-) {
-
-    if (creatingRoom) {
-        return;
-    }
-
-    creatingRoom = true;
-
-    const button =
-        document.getElementById(
-            "btn-confirm-create"
-        );
-
-    button.classList.add(
-        "disabled-button"
-    );
-
-    setStatus(
-        "Creating room..."
-    );
-
-    let attempts = 0;
-
-    function tryCreate() {
-
-        attempts++;
-
-        if (attempts > 10) {
-
-            creatingRoom = false;
-
-            button.classList.remove(
-                "disabled-button"
-            );
-
-            setStatus(
-                "Could not create room.",
-                true
-            );
-
-            return;
-        }
-
-        const code =
-            generateRoomCode();
-
-        const ref =
-            database.ref(
-                "rooms/" + code
-            );
-
-        ref.transaction(
-            current => {
-
-                /*
-                 * Abort if the room already exists.
-                 */
-                if (
-                    current !== null
-                ) {
+            ()=>{
+
+                botTimer=null;
+
+                if(
+                    !isHost()||
+                    P[S.turn]!==player||
+                    !S.bots[player]||
+                    controllerSignature()!==sig
+                ){
+
+                    botPending=false;
+                    botSig=null;
+                    scheduleController();
                     return;
                 }
 
-                const seats = {
-                    red: userId,
-                    blue: null,
-                    yellow: null,
-                    green: null
+                const moves=
+                    allLegal(
+                        S.board,
+                        player
+                    );
+
+                if(
+                    !moves.length
+                ){
+
+                    botPending=false;
+                    botSig=null;
+
+                    eliminateCurrent(
+                        player,
+                        inCheck(
+                            S.board,
+                            player
+                        )
+                            ? "checkmate"
+                            : "stalemate"
+                    );
+
+                    return;
+                }
+
+                moves.sort(
+                    (a,b)=>
+                        botScoreMove(
+                            b,
+                            player
+                        )-
+                        botScoreMove(
+                            a,
+                            player
+                        )
+                );
+
+                const top=
+                    Math.min(
+                        4,
+                        moves.length
+                    );
+
+                const choice=
+                    moves[
+                        Math.floor(
+                            Math.random()*top
+                        )
+                    ];
+
+                setTimeout(
+                    ()=>{
+
+                        if(
+                            !isHost()||
+                            P[S.turn]!==player||
+                            !S.bots[player]||
+                            controllerSignature()!==sig
+                        ){
+
+                            botPending=false;
+                            botSig=null;
+                            scheduleController();
+                            return;
+                        }
+
+                        const stillLegal=
+                            legal(
+                                S.board,
+                                choice.from.r,
+                                choice.from.c,
+                                player
+                            ).some(
+                                m =>
+                                    m.r===choice.to.r&&
+                                    m.c===choice.to.c&&
+                                    !!m.castle===
+                                        !!choice.to.castle&&
+                                    (
+                                        !m.castle||
+                                        m.castle===
+                                            choice.to.castle
+                                    )
+                            );
+
+                        if(
+                            !stillLegal
+                        ){
+
+                            botPending=false;
+                            botSig=null;
+                            scheduleController();
+                            return;
+                        }
+
+                        sendMove(
+                            choice.from,
+                            choice.to,
+                            true
+                        );
+
+                    },
+                    180
+                );
+
+            },
+            450
+        );
+}
+
+/* =========================================================
+   SEATS
+========================================================= */
+
+function claim(
+    seat
+){
+
+    if(
+        !ref||
+        seat==="red"||
+        S.bots[seat]||
+        S.gameOver
+    ){
+        return;
+    }
+
+    const seatRef=
+        ref.child(
+            "seats/"+seat
+        );
+
+    seatRef.transaction(
+        x=>{
+
+            if(x==null){
+                return uid;
+            }
+
+            if(
+                x===uid
+            ){
+                return uid;
+            }
+
+            return;
+        },
+
+        (
+            error,
+            committed
+        )=>{
+
+            if(
+                error||
+                !committed
+            ){
+                return;
+            }
+
+            ref
+                .child(
+                    "bots/"+seat
+                )
+                .set(false);
+        }
+    );
+}
+
+/* =========================================================
+   ROOMS
+========================================================= */
+
+function generateRoomCode(){
+
+    return Math.random()
+        .toString(36)
+        .slice(2,8)
+        .toUpperCase();
+}
+
+function roomCreate(
+    botCount
+){
+
+    if(creating){
+        return;
+    }
+
+    creating=true;
+
+    $("status").textContent=
+        "Creating room...";
+
+    let tries=0;
+
+    const attempt=()=>{
+
+        if(
+            ++tries>12
+        ){
+
+            creating=false;
+
+            $("status").textContent=
+                "Could not create room.";
+
+            return;
+        }
+
+        const code=
+            generateRoomCode();
+
+        const roomRef=
+            db.ref(
+                "rooms/"+code
+            );
+
+        roomRef.transaction(
+            current=>{
+
+                if(
+                    current!==null
+                ){
+                    return;
+                }
+
+                const seats={
+                    red:uid,
+                    blue:null,
+                    yellow:null,
+                    green:null
                 };
 
-                const bots = {
-                    red: false,
-                    blue: false,
-                    yellow: false,
-                    green: false
+                const bots={
+                    red:false,
+                    blue:false,
+                    yellow:false,
+                    green:false
                 };
 
-                /*
-                 * Bots fill clockwise:
-                 * Blue -> Yellow -> Green
-                 */
-                for (
-                    let i = 0;
-                    i < botCount;
+                for(
+                    let i=0;
+                    i<Math.min(
+                        3,
+                        botCount
+                    );
                     i++
-                ) {
+                ){
 
-                    const seat =
-                        BOT_SEATS[i];
-
-                    seats[seat] =
+                    seats[
+                        BOT_SEATS[i]
+                    ]=
                         "BOT";
 
-                    bots[seat] =
+                    bots[
+                        BOT_SEATS[i]
+                    ]=
                         true;
                 }
 
-                return {
+                return{
 
                     boardStr:
                         JSON.stringify(
-                            buildInitialBoard()
+                            initial()
                         ),
 
-                    currentPlayerIdx: 0,
+                    turn:0,
 
-                    eliminated: {
-                        red: false,
-                        blue: false,
-                        yellow: false,
-                        green: false
+                    elim:{
+                        red:false,
+                        blue:false,
+                        yellow:false,
+                        green:false
                     },
 
                     seats,
 
                     bots,
 
-                    /*
-                     * This is the single bot controller.
-                     */
-                    hostId: userId,
+                    scores:{
+                        red:0,
+                        blue:0,
+                        yellow:0,
+                        green:0
+                    },
 
-                    lastMove: null
+                    host:uid,
+
+                    gameOver:false,
+
+                    last:null
                 };
+
             },
-            (error, committed) => {
 
-                if (error) {
+            (
+                error,
+                committed
+            )=>{
 
-                    console.error(
-                        error
-                    );
+                if(
+                    error||
+                    !committed
+                ){
 
-                    tryCreate();
-
+                    attempt();
                     return;
                 }
 
-                if (!committed) {
-
-                    tryCreate();
-
-                    return;
-                }
-
-                roomCode =
+                roomCode=
                     code;
 
-                roomRef =
-                    ref;
+                ref=
+                    roomRef;
 
-                localState.mySeat =
+                S.seat=
                     "red";
 
-                localState.hostId =
-                    userId;
+                S.host=
+                    uid;
 
-                localState.boardRotation =
+                S.rotation=
                     0;
 
-                localState.manualRotation =
+                S.manual=
                     false;
 
-                roomBadge.textContent =
-                    "Room: " + roomCode;
+                $("room").textContent=
+                    "Room: "+code;
 
-                lobbyModal.classList.add(
-                    "hidden"
-                );
+                $("lobby")
+                    .classList
+                    .add(
+                        "hidden"
+                    );
 
-                subscribeToRoom(
-                    roomCode
-                );
+                creating=false;
 
-                creatingRoom = false;
-
-                button.classList.remove(
-                    "disabled-button"
+                subscribe(
+                    code
                 );
             }
         );
-    }
+    };
 
-    tryCreate();
+    attempt();
 }
 
-/* =========================================================
-   JOIN
-========================================================= */
+function joinRoom(){
 
-function joinRoom() {
-
-    if (joiningRoom) {
+    if(joining){
         return;
     }
 
-    const code =
-        roomInput.value
+    const code=
+        $("code")
+            .value
             .trim()
             .toUpperCase();
 
-    if (
-        !/^[A-Z0-9]{6}$/.test(code)
-    ) {
+    if(
+        !/^[A-Z0-9]{6}$/.test(
+            code
+        )
+    ){
 
-        setStatus(
-            "Enter a valid 6-character room code.",
-            true
-        );
+        $("status").textContent=
+            "Enter a 6-character room code.";
 
         return;
     }
 
-    joiningRoom = true;
+    joining=true;
 
-    const button =
-        document.getElementById(
-            "btn-join-room"
+    $("status").textContent=
+        "Connecting...";
+
+    const r=
+        db.ref(
+            "rooms/"+code
         );
 
-    button.classList.add(
-        "disabled-button"
-    );
-
-    setStatus(
-        "Connecting..."
-    );
-
-    const ref =
-        database.ref(
-            "rooms/" + code
-        );
-
-    ref.once(
+    r.once(
         "value"
     )
     .then(
-        snapshot => {
+        snapshot=>{
 
-            if (
+            if(
                 !snapshot.exists()
-            ) {
+            ){
 
-                setStatus(
-                    "Room not found.",
-                    true
-                );
+                $("status").textContent=
+                    "Room not found.";
 
                 return;
             }
 
-            roomCode =
+            roomCode=
                 code;
 
-            roomRef =
-                ref;
+            ref=
+                r;
 
-            roomBadge.textContent =
-                "Room: " + code;
+            $("room").textContent=
+                "Room: "+code;
 
-            lobbyModal.classList.add(
-                "hidden"
-            );
+            $("lobby")
+                .classList
+                .add(
+                    "hidden"
+                );
 
-            subscribeToRoom(
+            subscribe(
                 code
             );
         }
     )
     .catch(
-        error => {
+        error=>{
 
             console.error(
                 error
             );
 
-            setStatus(
-                "Could not connect to room.",
-                true
-            );
+            $("status").textContent=
+                "Could not connect to room.";
         }
     )
     .finally(
-        () => {
-
-            joiningRoom = false;
-
-            button.classList.remove(
-                "disabled-button"
-            );
+        ()=>{
+            joining=false;
         }
     );
 }
 
-/* =========================================================
-   ROOM SUBSCRIPTION
-========================================================= */
-
-function subscribeToRoom(
+function subscribe(
     code
-) {
+){
 
-    if (
-        roomRef &&
-        roomListener
-    ) {
+    if(
+        ref&&
+        listener
+    ){
 
-        roomRef.off(
+        ref.off(
             "value",
-            roomListener
+            listener
         );
     }
 
-    roomRef =
-        database.ref(
-            "rooms/" + code
+    ref=
+        db.ref(
+            "rooms/"+code
         );
 
-    roomListener =
-        snapshot => {
+    listener=
+        snapshot=>{
 
-            const data =
+            const data=
                 snapshot.val();
 
-            if (!data) {
+            if(!data){
                 return;
             }
 
             let board;
 
-            try {
+            try{
 
-                board =
+                board=
                     JSON.parse(
                         data.boardStr
                     );
 
-            } catch {
+            }catch{
 
                 return;
             }
 
-            localState.board =
+            S.board=
                 board;
 
-            localState.currentPlayerIdx =
+            S.turn=
                 Number(
-                    data.currentPlayerIdx || 0
-                );
+                    data.turn
+                )||0;
 
-            localState.eliminated = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...(data.eliminated || {})
+            S.elim={
+                red:false,
+                blue:false,
+                yellow:false,
+                green:false,
+                ...(data.elim||{})
             };
 
-            localState.seats = {
-                red: null,
-                blue: null,
-                yellow: null,
-                green: null,
-                ...(data.seats || {})
+            S.seats={
+                red:null,
+                blue:null,
+                yellow:null,
+                green:null,
+                ...(data.seats||{})
             };
 
-            localState.bots = {
-                red: false,
-                blue: false,
-                yellow: false,
-                green: false,
-                ...(data.bots || {})
+            S.bots={
+                red:false,
+                blue:false,
+                yellow:false,
+                green:false,
+                ...(data.bots||{})
             };
 
-            localState.hostId =
-                data.hostId || null;
+            S.scores={
+                red:0,
+                blue:0,
+                yellow:0,
+                green:0,
+                ...(data.scores||{})
+            };
 
-            localState.lastMove =
-                data.lastMove || null;
+            S.host=
+                data.host||
+                null;
 
-            const mySeat =
-                PLAYERS.find(
-                    seat =>
-                        localState.seats[seat] ===
-                        userId
-                );
+            S.gameOver=
+                !!data.gameOver;
 
-            if (mySeat) {
+            S.last=
+                data.last||
+                null;
 
-                const changed =
-                    localState.mySeat !== mySeat;
+            const mySeat=
+                P.find(
+                    p =>
+                        S.seats[p]===uid
+                )||
+                null;
 
-                localState.mySeat =
-                    mySeat;
+            const changed=
+                S.seat!==mySeat;
 
-                if (
-                    changed &&
-                    !localState.manualRotation
-                ) {
+            S.seat=
+                mySeat;
 
-                    localState.boardRotation =
-                        SEAT_ROTATIONS[
-                            mySeat
-                        ];
-                }
+            if(
+                changed&&
+                !S.manual&&
+                mySeat
+            ){
 
-            } else {
-
-                localState.mySeat =
-                    null;
+                S.rotation=
+                    ROT[mySeat];
             }
 
-            const active =
-                PLAYERS[
-                    localState.currentPlayerIdx
-                ];
+            const active=
+                P[S.turn];
 
-            /*
-             * Don't keep a selection when it isn't
-             * the user's turn.
-             */
-            if (
-                localState.mySeat !== active
-            ) {
+            if(
+                S.gameOver||
+                S.seat!==active
+            ){
 
-                localState.selectedSquare =
+                S.selected=
                     null;
 
-                localState.validMoves =
-                    [];
+                S.moves=[];
             }
 
-            renderBoard();
+            render();
 
-            /*
-             * Only the host performs bot/checkmate/stalemate
-             * controller work.
-             */
             scheduleController();
         };
 
-    roomRef.on(
+    ref.on(
         "value",
-        roomListener
+        listener
     );
 }
 
 /* =========================================================
-   LOBBY
+   LOBBY / UI
 ========================================================= */
 
-document
-    .getElementById(
-        "btn-create-room"
-    )
-    .addEventListener(
-        "click",
-        () => {
+$("create").onclick=()=>{
 
-            lobbyMain.classList.add(
-                "hidden"
-            );
+    $("lobby-main")
+        .classList
+        .add(
+            "hidden"
+        );
 
-            botSelection.classList.remove(
-                "hidden"
-            );
+    $("bots")
+        .classList
+        .remove(
+            "hidden"
+        );
 
-            setStatus("");
-        }
-    );
+    $("status").textContent="";
+};
 
-document
-    .getElementById(
-        "back-to-lobby"
-    )
-    .addEventListener(
-        "click",
-        () => {
+$("back").onclick=()=>{
 
-            botSelection.classList.add(
-                "hidden"
-            );
+    $("bots")
+        .classList
+        .add(
+            "hidden"
+        );
 
-            lobbyMain.classList.remove(
-                "hidden"
-            );
+    $("lobby-main")
+        .classList
+        .remove(
+            "hidden"
+        );
 
-            setStatus("");
-        }
-    );
+    $("status").textContent="";
+};
 
-/* =========================================================
-   BOT PREVIEW
-========================================================= */
+$("confirm").onclick=()=>{
 
-function updateBotPreview() {
-
-    const selected =
+    const selected=
         document.querySelector(
-            'input[name="bot-count"]:checked'
+            'input[name="bc"]:checked'
         );
 
-    const count =
-        Number(
-            selected?.value || 0
-        );
-
-    const preview = {
-        blue:
-            document.getElementById(
-                "preview-blue"
-            ),
-
-        yellow:
-            document.getElementById(
-                "preview-yellow"
-            ),
-
-        green:
-            document.getElementById(
-                "preview-green"
-            )
-    };
-
-    BOT_SEATS.forEach(
-        (seat, index) => {
-
-            const isBot =
-                index < count;
-
-            preview[seat].textContent =
-                isBot
-                    ? "Bot"
-                    : "Open";
-
-            preview[seat].className =
-                isBot
-                    ? "bot-seat"
-                    : "";
-        }
-    );
-}
-
-document
-    .querySelectorAll(
-        'input[name="bot-count"]'
-    )
-    .forEach(
-        radio => {
-
-            radio.addEventListener(
-                "change",
-                updateBotPreview
-            );
-        }
-    );
-
-document
-    .getElementById(
-        "btn-confirm-create"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            const selected =
-                document.querySelector(
-                    'input[name="bot-count"]:checked'
-                );
-
-            const count =
+    roomCreate(
+        Math.max(
+            0,
+            Math.min(
+                3,
                 Number(
-                    selected?.value || 0
-                );
-
-            createRoom(
-                Math.max(
-                    0,
-                    Math.min(
-                        3,
-                        count
-                    )
+                    selected?.value||0
                 )
-            );
-        }
+            )
+        )
     );
+};
 
-/* =========================================================
-   ROOM INPUT
-========================================================= */
+$("join").onclick=
+    joinRoom;
 
-roomInput.addEventListener(
-    "input",
-    () => {
-
-        roomInput.value =
-            roomInput.value
+$("code").oninput=
+    e =>
+        e.target.value=
+            e.target.value
                 .replace(
-                    /[^a-zA-Z0-9]/g,
+                    /[^a-z0-9]/gi,
                     ""
                 )
                 .toUpperCase()
-                .substring(0, 6);
-    }
-);
+                .slice(
+                    0,
+                    6
+                );
 
-roomInput.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Enter"
-        ) {
-
+$("code").onkeydown=
+    e=>{
+        if(
+            e.key==="Enter"
+        ){
             joinRoom();
         }
-    }
-);
-
-document
-    .getElementById(
-        "btn-join-room"
-    )
-    .addEventListener(
-        "click",
-        joinRoom
-    );
-
-/* =========================================================
-   SEATS
-========================================================= */
+    };
 
 document
     .querySelectorAll(
-        ".seat-button"
+        ".botcount"
     )
     .forEach(
-        button => {
+        x =>
+            x.addEventListener(
+                "change",
+                ()=>{
+                    document
+                        .querySelectorAll(
+                            ".bot-card"
+                        )
+                        .forEach(
+                            card =>
+                                card.classList.remove(
+                                    "border-indigo-500",
+                                    "bg-indigo-950/40"
+                                )
+                        );
 
-            button.addEventListener(
-                "click",
-                event => {
+                    const checked=
+                        document.querySelector(
+                            'input[name="bc"]:checked'
+                        );
 
-                    event.preventDefault();
+                    checked
+                        ?.nextElementSibling
+                        ?.classList
+                        .add(
+                            "border-indigo-500",
+                            "bg-indigo-950/40"
+                        );
+                }
+            )
+    );
 
-                    claimSeat(
+/*
+ * Initial selected bot option styling.
+ */
+document
+    .querySelector(
+        'input[name="bc"]:checked'
+    )
+    ?.nextElementSibling
+    ?.classList
+    .add(
+        "border-indigo-500",
+        "bg-indigo-950/40"
+    );
+
+document
+    .querySelectorAll(
+        ".seat"
+    )
+    .forEach(
+        button=>{
+            button.onclick=
+                () =>
+                    claim(
                         button.dataset.seat
                     );
-                }
-            );
         }
     );
 
-/* =========================================================
-   SHARE
-========================================================= */
+$("rotate").onclick=()=>{
 
-document
-    .getElementById(
-        "share-btn"
-    )
-    .addEventListener(
-        "click",
-        async () => {
+    S.manual=
+        true;
 
-            if (!roomCode) {
+    S.rotation=
+        (
+            S.rotation+
+            90
+        )%360;
+
+    render();
+};
+
+$("share").onclick=
+    async()=>{
+
+        if(!roomCode){
+            return;
+        }
+
+        try{
+
+            if(
+                navigator.share
+            ){
+
+                await navigator.share({
+                    title:
+                        "4-Player Chess",
+
+                    text:
+                        `Join my 4-Player Chess game! Room Code: ${roomCode}`
+                });
+
                 return;
             }
 
-            const text =
-                `Join my 4-Player Chess game!\nRoom Code: ${roomCode}`;
+        }catch{}
 
-            try {
+        try{
 
-                if (
-                    navigator.share
-                ) {
+            await navigator.clipboard.writeText(
+                roomCode
+            );
 
-                    await navigator.share({
-                        title:
-                            "4-Player Chess",
-                        text
-                    });
+            alert(
+                "Room code copied: "+
+                roomCode
+            );
 
-                    return;
-                }
+        }catch{
 
-            } catch {}
-
-            try {
-
-                await navigator.clipboard.writeText(
-                    roomCode
-                );
-
-                alert(
-                    `Room code copied: ${roomCode}`
-                );
-
-            } catch {
-
-                alert(
-                    `Room Code: ${roomCode}`
-                );
-            }
+            alert(
+                "Room Code: "+
+                roomCode
+            );
         }
+    };
+
+function Pname(p){
+
+    return(
+        p[0].toUpperCase()+
+        p.slice(1)
     );
+}
 
-/* =========================================================
-   ROTATE
-========================================================= */
+function updateUI(){
 
-document
-    .getElementById(
-        "rotate-btn"
-    )
-    .addEventListener(
-        "click",
-        () => {
+    const active=
+        P[S.turn];
 
-            localState.manualRotation =
-                true;
-
-            localState.boardRotation =
-                (
-                    localState.boardRotation +
-                    90
-                ) % 360;
-
-            renderBoard();
-        }
-    );
-
-/* =========================================================
-   UI
-========================================================= */
-
-function updateUI() {
-
-    const active =
-        PLAYERS[
-            localState.currentPlayerIdx
-        ];
-
-    const activeCheck =
-        isPlayerInCheck(
-            localState.board,
+    const check=
+        !S.gameOver&&
+        inCheck(
+            S.board,
             active
         );
 
-    roleIndicator.textContent =
-        localState.mySeat
-            ? `Seat: ${PLAYER_NAMES[localState.mySeat]}`
-            : "Seat: Spectator";
+    if(
+        S.gameOver
+    ){
 
-    PLAYERS.forEach(
-        player => {
+        const winner=
+            P.find(
+                p =>
+                    !S.elim[p]
+            );
 
-            const card =
-                document.getElementById(
-                    `card-${player}`
+        $("role").textContent=
+            winner
+                ? `Game Over — ${Pname(winner)} wins`
+                : "Game Over";
+
+    }else{
+
+        $("role").textContent=
+            S.seat
+                ? `Seat: ${Pname(S.seat)}${
+                    S.seat===active&&check
+                        ? " — CHECK"
+                        : ""
+                }`
+                : "Seat: Spectator";
+    }
+
+    P.forEach(
+        p=>{
+
+            const card=
+                $("card-"+p);
+
+            const name=
+                $("name-"+p);
+
+            const score=
+                $("score-"+p);
+
+            const button=
+                document.querySelector(
+                    `[data-seat="${p}"]`
                 );
 
-            const button =
-                document.getElementById(
-                    `seat-btn-${player}`
-                );
-
-            const name =
-                document.getElementById(
-                    `name-${player}`
-                );
-
-            card.className =
-                `player-card flex-1 glass-panel p-2.5 rounded-2xl border-2 transition-all ${
-                    active === player
-                        ? `active-${player}`
-                        : "border-transparent"
+            card.className=
+                `player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1 ${
+                    active===p&&!S.gameOver
+                        ? "active-"+p
+                        : ""
                 }`;
 
-            if (
-                active === player
-            ) {
+            score.textContent=
+                String(
+                    Number(
+                        S.scores[p]
+                    )||0
+                );
+
+            name.classList.toggle(
+                "pulse",
+                active===p&&!S.gameOver
+            );
+
+            if(
+                S.elim[p]
+            ){
+
+                name.textContent=
+                    Pname(p)+
+                    " (Out)";
 
                 name.classList.add(
-                    "turn-indicator"
+                    "out-text"
                 );
 
-            } else {
+            }else if(
+                S.gameOver
+            ){
+
+                name.textContent=
+                    Pname(p)+
+                    " (Winner)";
 
                 name.classList.remove(
-                    "turn-indicator"
+                    "out-text"
+                );
+
+            }else if(
+                S.bots[p]
+            ){
+
+                name.textContent=
+                    Pname(p)+
+                    " (Bot)";
+
+                name.classList.remove(
+                    "out-text"
+                );
+
+            }else if(
+                S.seats[p]
+            ){
+
+                name.textContent=
+                    Pname(p)+
+                    (
+                        S.seats[p]===uid
+                            ? " (You)"
+                            : " (Player)"
+                    );
+
+                name.classList.remove(
+                    "out-text"
+                );
+
+            }else{
+
+                name.textContent=
+                    Pname(p)+
+                    " (Open)";
+
+                name.classList.remove(
+                    "out-text"
                 );
             }
 
-            /*
-             * Bot.
-             */
-            if (
-                localState.bots[player]
-            ) {
+            if(button){
 
-                button.className =
-                    "hidden";
-
-                name.textContent =
-                    `${PLAYER_NAMES[player]} (Bot)`;
-
-                return;
+                button.className=
+                    (
+                        S.bots[p]||
+                        S.seats[p]||
+                        S.gameOver||
+                        p==="red"
+                    )
+                        ? "hidden"
+                        : "seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1";
             }
-
-            /*
-             * Human.
-             */
-            if (
-                localState.seats[player]
-            ) {
-
-                button.className =
-                    "hidden";
-
-                name.textContent =
-                    `${PLAYER_NAMES[player]} (${
-                        localState.seats[player] === userId
-                            ? "You"
-                            : "Player"
-                    })`;
-
-                return;
-            }
-
-            /*
-             * Open.
-             */
-            button.className =
-                "seat-button text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200";
-
-            name.textContent =
-                `${PLAYER_NAMES[player]} (Open)`;
         }
     );
-
-    if (
-        activeCheck &&
-        localState.mySeat === active
-    ) {
-
-        roleIndicator.textContent +=
-            " — CHECK";
-    }
 }
-
-/* =========================================================
-   INITIALIZE
-========================================================= */
 
 lucide.createIcons();
 
-localState.board =
-    buildInitialBoard();
+S.board=
+    initial();
 
-renderBoard();
+render();
 
-updateBotPreview();
 </script>
-
 </body>
 </html>
