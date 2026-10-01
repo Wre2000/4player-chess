@@ -19,12 +19,8 @@ button{touch-action:manipulation}
 .glass{background:rgba(30,41,59,.85);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)}
 .board{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));grid-template-rows:repeat(14,minmax(0,1fr));aspect-ratio:1;box-shadow:0 25px 50px -12px rgba(0,0,0,.7);transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:center}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;min-width:0;min-height:0;overflow:hidden}
-.light{background:#eeeed2}
-.dark{background:#769656}
-.off{background:transparent;pointer-events:none}
-.selected{background:#baca44!important}
-.last{background:rgba(245,203,66,.5)!important}
-.check{box-shadow:inset 0 0 0 4px rgba(239,68,68,.85)}
+.light{background:#eeeed2}.dark{background:#769656}.off{background:transparent;pointer-events:none}
+.selected{background:#baca44!important}.last{background:rgba(245,203,66,.5)!important}.check{box-shadow:inset 0 0 0 4px rgba(239,68,68,.85)}
 .dot{width:30%;height:30%;background:rgba(0,0,0,.28);border-radius:50%;pointer-events:none}
 .ring{position:absolute;inset:4px;border:4px solid rgba(239,68,68,.78);border-radius:50%;pointer-events:none}
 .piece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;position:relative}
@@ -53,7 +49,6 @@ button{touch-action:manipulation}
 
 <div id="lobby" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
     <div class="glass rounded-3xl p-6 sm:p-8 w-full max-w-md text-center shadow-2xl">
-
         <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-3">
             <i data-lucide="layout-grid" class="w-10 h-10 text-white"></i>
         </div>
@@ -67,288 +62,159 @@ button{touch-action:manipulation}
         </p>
 
         <div id="lobby-main">
-
-            <button
-                id="create"
-                type="button"
-                class="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold shadow-lg">
+            <button id="create" type="button" class="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold shadow-lg">
                 Create New Room
             </button>
 
             <div class="flex items-center gap-2 my-4">
                 <div class="h-px bg-slate-700 flex-1"></div>
-                <span class="text-[10px] text-slate-500 font-semibold uppercase">
-                    Or Join Game
-                </span>
+                <span class="text-[10px] text-slate-500 font-semibold uppercase">Or Join Game</span>
                 <div class="h-px bg-slate-700 flex-1"></div>
             </div>
 
             <div class="flex gap-2">
-
-                <input
-                    id="code"
-                    type="text"
-                    maxlength="6"
-                    placeholder="ROOM CODE"
-                    autocomplete="off"
-                    autocapitalize="characters"
+                <input id="code" type="text" maxlength="6" placeholder="ROOM CODE"
+                    autocomplete="off" autocapitalize="characters"
                     class="flex-1 rounded-2xl bg-slate-900 border border-slate-700 p-3 text-center uppercase tracking-widest font-mono font-bold text-sm focus:outline-none focus:border-indigo-500">
 
-                <button
-                    id="join"
-                    type="button"
-                    class="px-5 rounded-2xl bg-slate-700 hover:bg-slate-600 font-bold">
+                <button id="join" type="button" class="px-5 rounded-2xl bg-slate-700 hover:bg-slate-600 font-bold">
                     Join
                 </button>
-
             </div>
-
         </div>
 
         <div id="bots" class="hidden">
-
             <div class="text-left mb-4">
-                <button
-                    id="back"
-                    type="button"
-                    class="text-xs text-slate-400 hover:text-white">
+                <button id="back" type="button" class="text-xs text-slate-400 hover:text-white">
                     ← Back
                 </button>
             </div>
 
-            <p class="font-bold mb-1">
-                Computer players
-            </p>
-
+            <p class="font-bold mb-1">Computer players</p>
             <p class="text-xs text-slate-400 mb-5">
                 Bots fill Blue, then Yellow, then Green.
             </p>
 
             <div id="bot-options" class="grid grid-cols-4 gap-2 mb-5">
-
                 <label class="cursor-pointer">
                     <input class="botcount hidden" type="radio" name="bc" value="0" checked>
                     <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
-                        <b>0</b>
-                        <small class="block text-slate-400">Bots</small>
+                        <b>0</b><small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
 
                 <label class="cursor-pointer">
                     <input class="botcount hidden" type="radio" name="bc" value="1">
                     <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
-                        <b>1</b>
-                        <small class="block text-slate-400">Bot</small>
+                        <b>1</b><small class="block text-slate-400">Bot</small>
                     </div>
                 </label>
 
                 <label class="cursor-pointer">
                     <input class="botcount hidden" type="radio" name="bc" value="2">
                     <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
-                        <b>2</b>
-                        <small class="block text-slate-400">Bots</small>
+                        <b>2</b><small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
 
                 <label class="cursor-pointer">
                     <input class="botcount hidden" type="radio" name="bc" value="3">
                     <div class="bot-card rounded-xl border-2 border-slate-700 p-3">
-                        <b>3</b>
-                        <small class="block text-slate-400">Bots</small>
+                        <b>3</b><small class="block text-slate-400">Bots</small>
                     </div>
                 </label>
-
             </div>
 
-            <button
-                id="confirm"
-                type="button"
-                class="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold">
+            <button id="confirm" type="button" class="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold">
                 Create Game
             </button>
-
         </div>
 
         <p id="status" class="text-xs text-slate-400 min-h-[18px] mt-3"></p>
-
     </div>
 </div>
 
 <header class="w-full max-w-6xl glass rounded-2xl p-3 sm:p-4 mb-2 flex justify-between items-center shadow-lg">
-
     <div class="min-w-0">
-
         <div class="flex items-center gap-2">
-
             <div class="p-2 bg-indigo-600 rounded-xl shadow-md shrink-0">
                 <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
             </div>
 
-            <b class="text-base sm:text-lg">
-                4-Player Chess
-            </b>
+            <b class="text-base sm:text-lg">4-Player Chess</b>
 
-            <span
-                id="room"
+            <span id="room"
                 class="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                 No Room
             </span>
-
         </div>
 
         <p id="role" class="text-xs text-slate-400 mt-1">
             Seat: Spectator
         </p>
-
     </div>
 
     <div class="flex gap-2 shrink-0">
-
-        <button
-            id="share"
-            type="button"
-            class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">
+        <button id="share" type="button" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">
             Share
         </button>
 
-        <button
-            id="rotate"
-            type="button"
-            class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold">
+        <button id="rotate" type="button" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold">
             Rotate
         </button>
-
     </div>
-
 </header>
 
 <main class="w-full max-w-6xl flex flex-col lg:flex-row gap-3 items-center justify-center flex-1">
 
     <div class="w-full lg:w-64 flex lg:flex-col gap-2">
 
-        <div
-            id="card-yellow"
-            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
-
+        <div id="card-yellow" class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
             <div class="flex justify-between items-center">
-
-                <span
-                    id="name-yellow"
-                    class="text-yellow-400 font-bold text-xs">
-                    Yellow
-                </span>
-
-                <span
-                    id="score-yellow"
-                    class="score text-yellow-300 font-black">
-                    0
-                </span>
-
+                <span id="name-yellow" class="text-yellow-400 font-bold text-xs">Yellow</span>
+                <span id="score-yellow" class="score text-yellow-300 font-black">0</span>
             </div>
-
-            <button
-                data-seat="yellow"
-                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+            <button data-seat="yellow" class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
                 Claim
             </button>
-
         </div>
 
-        <div
-            id="card-blue"
-            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
-
+        <div id="card-blue" class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
             <div class="flex justify-between items-center">
-
-                <span
-                    id="name-blue"
-                    class="text-blue-400 font-bold text-xs">
-                    Blue
-                </span>
-
-                <span
-                    id="score-blue"
-                    class="score text-blue-300 font-black">
-                    0
-                </span>
-
+                <span id="name-blue" class="text-blue-400 font-bold text-xs">Blue</span>
+                <span id="score-blue" class="score text-blue-300 font-black">0</span>
             </div>
-
-            <button
-                data-seat="blue"
-                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+            <button data-seat="blue" class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
                 Claim
             </button>
-
         </div>
 
     </div>
 
     <div class="w-full max-w-[600px] aspect-square p-1 bg-slate-800/60 rounded-3xl border border-slate-700/50 shadow-2xl">
-
-        <div
-            id="board"
-            class="board w-full h-full rounded-2xl overflow-hidden bg-slate-900">
-        </div>
-
+        <div id="board" class="board w-full h-full rounded-2xl overflow-hidden bg-slate-900"></div>
     </div>
 
     <div class="w-full lg:w-64 flex lg:flex-col gap-2">
 
-        <div
-            id="card-green"
-            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
-
+        <div id="card-green" class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
             <div class="flex justify-between items-center">
-
-                <span
-                    id="name-green"
-                    class="text-green-400 font-bold text-xs">
-                    Green
-                </span>
-
-                <span
-                    id="score-green"
-                    class="score text-green-300 font-black">
-                    0
-                </span>
-
+                <span id="name-green" class="text-green-400 font-bold text-xs">Green</span>
+                <span id="score-green" class="score text-green-300 font-black">0</span>
             </div>
-
-            <button
-                data-seat="green"
-                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+            <button data-seat="green" class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
                 Claim
             </button>
-
         </div>
 
-        <div
-            id="card-red"
-            class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
-
+        <div id="card-red" class="player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1">
             <div class="flex justify-between items-center">
-
-                <span
-                    id="name-red"
-                    class="text-red-400 font-bold text-xs">
-                    Red
-                </span>
-
-                <span
-                    id="score-red"
-                    class="score text-red-300 font-black">
-                    0
-                </span>
-
+                <span id="name-red" class="text-red-400 font-bold text-xs">Red</span>
+                <span id="score-red" class="score text-red-300 font-black">0</span>
             </div>
-
-            <button
-                data-seat="red"
-                class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
+            <button data-seat="red" class="seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1">
                 Claim
             </button>
-
         </div>
 
     </div>
@@ -359,7 +225,7 @@ button{touch-action:manipulation}
 "use strict";
 
 /* =========================================================
-   FIREBASE — KEEPING THE CONFIG UNCHANGED
+   FIREBASE — CONFIG UNCHANGED
 ========================================================= */
 
 const firebaseConfig={
@@ -373,7 +239,6 @@ const firebaseConfig={
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const db=firebase.database();
 
 const N=14;
@@ -415,13 +280,25 @@ const VALUES={
 };
 
 /*
- * One square sooner than the previous version.
+ * Each player promotes on their 8th rank.
+ *
+ * Red:
+ * starts row 13 and moves upward -> row 5
+ *
+ * Blue:
+ * starts column 0 and moves right -> column 8
+ *
+ * Yellow:
+ * starts row 0 and moves downward -> row 8
+ *
+ * Green:
+ * starts column 13 and moves left -> column 5
  */
 const PROMOTE={
-    red:(r,c)=>r===6,
-    blue:(r,c)=>c===7,
-    yellow:(r,c)=>r===7,
-    green:(r,c)=>c===6
+    red:(r,c)=>r===5,
+    blue:(r,c)=>c===8,
+    yellow:(r,c)=>r===8,
+    green:(r,c)=>c===5
 };
 
 const COLORS={
@@ -434,42 +311,29 @@ const COLORS={
 
 const uid=(()=>{
     try{
-
-        let x=
-            localStorage.fourPlayerChessUserId;
+        let x=localStorage.fourPlayerChessUserId;
 
         if(!x){
-
-            x=
-                "user_"+
-                Math.random()
-                    .toString(36)
-                    .slice(2,11);
-
-            localStorage.fourPlayerChessUserId=
-                x;
+            x="user_"+Math.random().toString(36).slice(2,11);
+            localStorage.fourPlayerChessUserId=x;
         }
 
         return x;
-
     }catch{
-
-        return(
-            "user_"+
-            Math.random()
-                .toString(36)
-                .slice(2,11)
-        );
+        return "user_"+Math.random().toString(36).slice(2,11);
     }
 })();
 
 let ref=null;
 let listener=null;
 let roomCode=null;
+
 let controllerTimer=null;
 let botTimer=null;
+
 let botPending=false;
 let botSig=null;
+
 let creating=false;
 let joining=false;
 
@@ -515,40 +379,24 @@ let S={
     gameOver:false
 };
 
-const $=
-    id =>
-        document.getElementById(id);
+const $=id=>document.getElementById(id);
 
-const empty=
-    () =>
-        Array.from(
-            {length:N},
-            () =>
-                Array(N).fill(null)
-        );
+const empty=()=>
+    Array.from(
+        {length:N},
+        ()=>Array(N).fill(null)
+    );
 
-const clone=
-    b =>
-        b.map(
-            row =>
-                row.map(
-                    x =>
-                        x
-                            ? {...x}
-                            : null
-                )
-        );
+const clone=b=>
+    b.map(row=>
+        row.map(x=>
+            x?{...x}:null
+        )
+    );
 
 function valid(r,c){
 
-    if(
-        r<0||
-        r>=N||
-        c<0||
-        c>=N
-    ){
-        return false;
-    }
+    if(r<0||r>=N||c<0||c>=N)return false;
 
     return !(
         (r<3&&c<3)||
@@ -559,32 +407,20 @@ function valid(r,c){
 }
 
 function playerHasAnyPiece(b,p){
-
-    return b.some(
-        row =>
-            row.some(
-                x =>
-                    x?.player===p
-            )
+    return b.some(row=>
+        row.some(x=>
+            x?.player===p
+        )
     );
 }
 
 function nextTurn(i,e){
 
-    for(
-        let k=1;
-        k<=4;
-        k++
-    ){
+    for(let k=1;k<=4;k++){
 
-        const n=
-            (i+k)%4;
+        const n=(i+k)%4;
 
-        if(
-            !e[P[n]]
-        ){
-            return n;
-        }
+        if(!e[P[n]])return n;
     }
 
     return i;
@@ -596,8 +432,7 @@ function nextTurn(i,e){
 
 function initial(){
 
-    const b=
-        empty();
+    const b=empty();
 
     const back=[
         "r",
@@ -610,56 +445,28 @@ function initial(){
         "r"
     ];
 
-    const pawns=
-        Array(8).fill("p");
+    const pawns=Array(8).fill("p");
 
-    const row=
-        (
-            r,
-            start,
-            pieces,
-            player
-        ) =>
-            pieces.forEach(
-                (t,i)=>{
-                    b[r][start+i]={
-                        type:t,
-                        player,
-                        moved:false
-                    };
-                }
-            );
+    const row=(r,start,pieces,player)=>
+        pieces.forEach((t,i)=>{
+            b[r][start+i]={
+                type:t,
+                player,
+                moved:false
+            };
+        });
 
-    const col=
-        (
-            c,
-            start,
-            pieces,
-            player
-        ) =>
-            pieces.forEach(
-                (t,i)=>{
-                    b[start+i][c]={
-                        type:t,
-                        player,
-                        moved:false
-                    };
-                }
-            );
+    const col=(c,start,pieces,player)=>
+        pieces.forEach((t,i)=>{
+            b[start+i][c]={
+                type:t,
+                player,
+                moved:false
+            };
+        });
 
-    row(
-        13,
-        3,
-        back,
-        "red"
-    );
-
-    row(
-        12,
-        3,
-        pawns,
-        "red"
-    );
+    row(13,3,back,"red");
+    row(12,3,pawns,"red");
 
     row(
         0,
@@ -706,22 +513,18 @@ function initial(){
     return b;
 }
 
-function shouldPromote(
-    p,
-    r,
-    c
-){
+function shouldPromote(p,r,c){
 
     return !!(
-        p&&
-        p.type==="p"&&
+        p &&
+        p.type==="p" &&
         PROMOTE[p.player]?.(r,c)
     );
 }
 
 function promote(p){
 
-    return{
+    return {
         ...p,
         type:"q",
         promoted:true,
@@ -729,40 +532,23 @@ function promote(p){
     };
 }
 
-function startingPawn(
-    p,
-    r,
-    c
-){
+function startingPawn(p,r,c){
 
-    return(
-        (p==="red"&&r===12)||
-        (p==="yellow"&&r===1)||
-        (p==="blue"&&c===1)||
+    return (
+        (p==="red"&&r===12) ||
+        (p==="yellow"&&r===1) ||
+        (p==="blue"&&c===1) ||
         (p==="green"&&c===12)
     );
 }
 
 /* =========================================================
    CASTLING
-=========================================================
-
-   King positions:
-   Red    c7
-   Blue   r7
-   Yellow c6
-   Green  r6
-
 ========================================================= */
 
-function castleInfo(
-    player,
-    side
-){
+function castleInfo(player,side){
 
-    if(
-        player==="red"
-    ){
+    if(player==="red"){
 
         return side==="K"
             ? {
@@ -772,7 +558,6 @@ function castleInfo(
                 to:{r:13,c:9},
                 rookTo:{r:13,c:8}
             }
-
             : {
                 k:{r:13,c:7},
                 rook:{r:13,c:3},
@@ -782,9 +567,7 @@ function castleInfo(
             };
     }
 
-    if(
-        player==="yellow"
-    ){
+    if(player==="yellow"){
 
         return side==="K"
             ? {
@@ -794,7 +577,6 @@ function castleInfo(
                 to:{r:0,c:8},
                 rookTo:{r:0,c:7}
             }
-
             : {
                 k:{r:0,c:6},
                 rook:{r:0,c:3},
@@ -804,9 +586,7 @@ function castleInfo(
             };
     }
 
-    if(
-        player==="blue"
-    ){
+    if(player==="blue"){
 
         return side==="K"
             ? {
@@ -816,7 +596,6 @@ function castleInfo(
                 to:{r:9,c:0},
                 rookTo:{r:8,c:0}
             }
-
             : {
                 k:{r:7,c:0},
                 rook:{r:3,c:0},
@@ -834,7 +613,6 @@ function castleInfo(
             to:{r:8,c:13},
             rookTo:{r:7,c:13}
         }
-
         : {
             k:{r:6,c:13},
             rook:{r:3,c:13},
@@ -844,68 +622,44 @@ function castleInfo(
         };
 }
 
-function castleAvailable(
-    b,
-    p,
-    side
-){
+function castleAvailable(b,p,side){
 
-    const x=
-        castleInfo(
-            p,
-            side
-        );
+    const x=castleInfo(p,side);
 
-    const k=
-        b[x.k.r]?.[x.k.c];
-
-    const rook=
-        b[x.rook.r]?.[x.rook.c];
+    const k=b[x.k.r]?.[x.k.c];
+    const rook=b[x.rook.r]?.[x.rook.c];
 
     if(
         !k||
         k.player!==p||
         k.type!=="k"||
         k.moved
-    ){
-        return false;
-    }
+    )return false;
 
     if(
         !rook||
         rook.player!==p||
         rook.type!=="r"||
         rook.moved
-    ){
-        return false;
-    }
+    )return false;
 
-    const dr=
-        Math.sign(
-            x.rook.r-x.k.r
-        );
+    const dr=Math.sign(
+        x.rook.r-x.k.r
+    );
 
-    const dc=
-        Math.sign(
-            x.rook.c-x.k.c
-        );
+    const dc=Math.sign(
+        x.rook.c-x.k.c
+    );
 
-    let r=
-        x.k.r+dr;
-
-    let c=
-        x.k.c+dc;
+    let r=x.k.r+dr;
+    let c=x.k.c+dc;
 
     while(
         r!==x.rook.r||
         c!==x.rook.c
     ){
 
-        if(
-            b[r]?.[c]
-        ){
-            return false;
-        }
+        if(b[r]?.[c])return false;
 
         r+=dr;
         c+=dc;
@@ -918,52 +672,37 @@ function castleAvailable(
    PSEUDO-LEGAL MOVES
 ========================================================= */
 
-function pseudo(
-    b,
-    r,
-    c,
-    attack=false
-){
+function pseudo(b,r,c,attack=false){
 
-    const p=
-        b[r]?.[c];
+    const p=b[r]?.[c];
 
     if(
         !p||
         p.player==="gray"
-    ){
-        return [];
-    }
+    )return [];
 
     const moves=[];
 
-    const add=(
-        nr,
-        nc
-    )=>{
+    const add=(nr,nc)=>{
 
+        if(!valid(nr,nc))return;
+
+        const t=b[nr][nc];
+
+        /*
+         * Dead pieces remain on the board and block movement.
+         * They cannot be captured.
+         */
         if(
-            !valid(nr,nc)
-        ){
-            return;
-        }
-
-        const t=
-            b[nr][nc];
-
-        if(
-            t?.player===p.player
-        ){
-            return;
-        }
+            t?.player===p.player||
+            t?.player==="gray"
+        )return;
 
         if(
             t?.type==="k"&&
             t.player!=="gray"&&
             !attack
-        ){
-            return;
-        }
+        )return;
 
         moves.push({
             r:nr,
@@ -971,16 +710,11 @@ function pseudo(
         });
     };
 
-    if(
-        p.type==="p"
-    ){
+    if(p.type==="p"){
 
-        const d=
-            DIR[p.player];
+        const d=DIR[p.player];
 
-        if(!d){
-            return moves;
-        }
+        if(!d)return moves;
 
         if(attack){
 
@@ -995,35 +729,24 @@ function pseudo(
                         [1,d.c]
                     ];
 
-            ds.forEach(
-                ([dr,dc])=>{
+            ds.forEach(([dr,dc])=>{
 
-                    const nr=
-                        r+dr;
+                const nr=r+dr;
+                const nc=c+dc;
 
-                    const nc=
-                        c+dc;
-
-                    if(
-                        valid(nr,nc)
-                    ){
-
-                        moves.push({
-                            r:nr,
-                            c:nc
-                        });
-                    }
+                if(valid(nr,nc)){
+                    moves.push({
+                        r:nr,
+                        c:nc
+                    });
                 }
-            );
+            });
 
             return moves;
         }
 
-        let nr=
-            r+d.r;
-
-        let nc=
-            c+d.c;
+        let nr=r+d.r;
+        let nc=c+d.c;
 
         if(
             valid(nr,nc)&&
@@ -1074,43 +797,33 @@ function pseudo(
                     [1,d.c]
                 ];
 
-        captures.forEach(
-            ([dr,dc])=>{
+        captures.forEach(([dr,dc])=>{
 
-                const cr=
-                    r+dr;
+            const cr=r+dr;
+            const cc=c+dc;
 
-                const cc=
-                    c+dc;
+            if(!valid(cr,cc))return;
 
-                if(
-                    !valid(cr,cc)
-                ){
-                    return;
-                }
+            const t=b[cr][cc];
 
-                const t=
-                    b[cr][cc];
+            if(
+                t&&
+                t.player!==p.player&&
+                t.player!=="gray"&&
+                t.type!=="k"
+            ){
 
-                if(
-                    t&&
-                    t.player!==p.player
-                ){
-
-                    moves.push({
-                        r:cr,
-                        c:cc
-                    });
-                }
+                moves.push({
+                    r:cr,
+                    c:cc
+                });
             }
-        );
+        });
 
         return moves;
     }
 
-    if(
-        p.type==="n"
-    ){
+    if(p.type==="n"){
 
         [
             [-2,-1],
@@ -1121,38 +834,20 @@ function pseudo(
             [1,2],
             [2,-1],
             [2,1]
-        ].forEach(
-            ([dr,dc]) =>
-                add(
-                    r+dr,
-                    c+dc
-                )
+        ].forEach(([dr,dc])=>
+            add(r+dr,c+dc)
         );
 
         return moves;
     }
 
-    if(
-        p.type==="k"
-    ){
+    if(p.type==="k"){
 
-        for(
-            let dr=-1;
-            dr<=1;
-            dr++
-        ){
+        for(let dr=-1;dr<=1;dr++){
 
-            for(
-                let dc=-1;
-                dc<=1;
-                dc++
-            ){
+            for(let dc=-1;dc<=1;dc++){
 
-                if(
-                    dr||
-                    dc
-                ){
-
+                if(dr||dc){
                     add(
                         r+dr,
                         c+dc
@@ -1163,30 +858,25 @@ function pseudo(
 
         if(!attack){
 
-            [
-                "K",
-                "Q"
-            ].forEach(
-                side=>{
+            ["K","Q"].forEach(side=>{
 
-                    if(
-                        castleAvailable(
-                            b,
+                if(
+                    castleAvailable(
+                        b,
+                        p.player,
+                        side
+                    )
+                ){
+
+                    moves.push({
+                        ...castleInfo(
                             p.player,
                             side
-                        )
-                    ){
-
-                        moves.push({
-                            ...castleInfo(
-                                p.player,
-                                side
-                            ).to,
-                            castle:side
-                        });
-                    }
+                        ).to,
+                        castle:side
+                    });
                 }
-            );
+            });
         }
 
         return moves;
@@ -1194,9 +884,7 @@ function pseudo(
 
     let dirs=[];
 
-    if(
-        p.type==="b"
-    ){
+    if(p.type==="b"){
 
         dirs=[
             [1,1],
@@ -1205,9 +893,7 @@ function pseudo(
             [-1,-1]
         ];
 
-    }else if(
-        p.type==="r"
-    ){
+    }else if(p.type==="r"){
 
         dirs=[
             [1,0],
@@ -1230,23 +916,14 @@ function pseudo(
         ];
     }
 
-    for(
-        const [dr,dc]
-        of dirs
-    ){
+    for(const [dr,dc] of dirs){
 
-        let nr=
-            r+dr;
+        let nr=r+dr;
+        let nc=c+dc;
 
-        let nc=
-            c+dc;
+        while(valid(nr,nc)){
 
-        while(
-            valid(nr,nc)
-        ){
-
-            const t=
-                b[nr][nc];
+            const t=b[nr][nc];
 
             if(!t){
 
@@ -1257,12 +934,16 @@ function pseudo(
 
             }else{
 
+                /*
+                 * Dead pieces block sliding pieces and cannot
+                 * be captured.
+                 */
                 if(
-                    t.player!==p.player
+                    t.player!==p.player&&
+                    t.player!=="gray"
                 ){
 
                     if(
-                        t.player==="gray"||
                         t.type!=="k"||
                         attack
                     ){
@@ -1289,32 +970,20 @@ function pseudo(
    CHECK / ATTACK DETECTION
 ========================================================= */
 
-function king(
-    b,
-    p
-){
+function king(b,p){
 
-    for(
-        let r=0;
-        r<N;
-        r++
-    ){
+    for(let r=0;r<N;r++){
 
-        for(
-            let c=0;
-            c<N;
-            c++
-        ){
+        for(let c=0;c<N;c++){
 
-            const x=
-                b[r][c];
+            const x=b[r][c];
 
             if(
                 x?.player===p&&
                 x.type==="k"
             ){
 
-                return{
+                return {
                     r,
                     c
                 };
@@ -1325,33 +994,17 @@ function king(
     return null;
 }
 
-function attacks(
-    b,
-    r,
-    c,
-    p
-){
+function attacks(b,r,c,p){
 
-    for(
-        let pr=0;
-        pr<N;
-        pr++
-    ){
+    for(let pr=0;pr<N;pr++){
 
-        for(
-            let pc=0;
-            pc<N;
-            pc++
-        ){
+        for(let pc=0;pc<N;pc++){
 
-            const piece=
-                b[pr][pc];
+            const piece=b[pr][pc];
 
             if(
                 piece?.player!==p
-            ){
-                continue;
-            }
+            )continue;
 
             if(
                 pseudo(
@@ -1359,10 +1012,9 @@ function attacks(
                     pr,
                     pc,
                     true
-                ).some(
-                    x =>
-                        x.r===r&&
-                        x.c===c
+                ).some(x=>
+                    x.r===r&&
+                    x.c===c
                 )
             ){
 
@@ -1374,73 +1026,48 @@ function attacks(
     return false;
 }
 
-function inCheck(
-    b,
-    p
-){
+function inCheck(b,p){
 
-    const k=
-        king(
-            b,
-            p
-        );
+    const k=king(b,p);
 
-    if(!k){
-        return true;
-    }
+    if(!k)return true;
 
-    return P.some(
-        o=>{
+    return P.some(o=>{
 
-            if(
-                o===p
-            ){
-                return false;
-            }
+        if(o===p)return false;
 
-            if(
-                !playerHasAnyPiece(
-                    b,
-                    o
-                )
-            ){
-                return false;
-            }
-
-            return attacks(
+        if(
+            !playerHasAnyPiece(
                 b,
-                k.r,
-                k.c,
                 o
-            );
-        }
-    );
+            )
+        )return false;
+
+        return attacks(
+            b,
+            k.r,
+            k.c,
+            o
+        );
+    });
 }
 
 /* =========================================================
    LEGAL MOVES
 ========================================================= */
 
-function apply(
-    b,
-    from,
-    to
-){
+function apply(b,from,to){
 
-    const n=
-        clone(b);
+    const n=clone(b);
 
     let piece={
         ...n[from.r][from.c],
         moved:true
     };
 
-    n[from.r][from.c]=
-        null;
+    n[from.r][from.c]=null;
 
-    if(
-        to.castle
-    ){
+    if(to.castle){
 
         const x=
             castleInfo(
@@ -1448,14 +1075,12 @@ function apply(
                 to.castle
             );
 
-        n[x.to.r][x.to.c]=
-            piece;
+        n[x.to.r][x.to.c]=piece;
 
         const rook=
             n[x.rook.r]?.[x.rook.c];
 
-        n[x.rook.r][x.rook.c]=
-            null;
+        n[x.rook.r][x.rook.c]=null;
 
         if(rook){
 
@@ -1475,23 +1100,16 @@ function apply(
             )
         ){
 
-            piece=
-                promote(piece);
+            piece=promote(piece);
         }
 
-        n[to.r][to.c]=
-            piece;
+        n[to.r][to.c]=piece;
     }
 
     return n;
 }
 
-function legal(
-    b,
-    r,
-    c,
-    p
-){
+function legal(b,r,c,p){
 
     const out=[];
 
@@ -1503,14 +1121,9 @@ function legal(
             false
         );
 
-    for(
-        const x
-        of candidates
-    ){
+    for(const x of candidates){
 
-        if(
-            x.castle
-        ){
+        if(x.castle){
 
             const z=
                 castleInfo(
@@ -1518,63 +1131,41 @@ function legal(
                     x.castle
                 );
 
-            /*
-             * Cannot castle out of check,
-             * through check, or into check.
-             */
-            if(
-                inCheck(
-                    b,
-                    p
-                )
-            ){
-                continue;
-            }
+            if(inCheck(b,p))continue;
 
             if(
-                P.some(
-                    o =>
-                        o!==p&&
-                        playerHasAnyPiece(
+                P.some(o=>
+                    o!==p&&
+                    playerHasAnyPiece(b,o)&&
+                    (
+                        attacks(
                             b,
+                            z.pass.r,
+                            z.pass.c,
                             o
-                        )&&
-                        (
-                            attacks(
-                                b,
-                                z.pass.r,
-                                z.pass.c,
-                                o
-                            )||
-                            attacks(
-                                b,
-                                z.to.r,
-                                z.to.c,
-                                o
-                            )
+                        )||
+                        attacks(
+                            b,
+                            z.to.r,
+                            z.to.c,
+                            o
                         )
+                    )
                 )
-            ){
-                continue;
-            }
+            )continue;
 
             out.push(x);
+
             continue;
         }
 
         const target=
             b[x.r][x.c];
 
-        /*
-         * Live kings are never captured.
-         * Gray/dead kings can be captured.
-         */
         if(
             target?.type==="k"&&
             target.player!=="gray"
-        ){
-            continue;
-        }
+        )continue;
 
         const next=
             apply(
@@ -1583,13 +1174,7 @@ function legal(
                 x
             );
 
-        if(
-            !inCheck(
-                next,
-                p
-            )
-        ){
-
+        if(!inCheck(next,p)){
             out.push(x);
         }
     }
@@ -1597,43 +1182,29 @@ function legal(
     return out;
 }
 
-function allLegal(
-    b,
-    p
-){
+function allLegal(b,p){
 
     const out=[];
 
-    for(
-        let r=0;
-        r<N;
-        r++
-    ){
+    for(let r=0;r<N;r++){
 
-        for(
-            let c=0;
-            c<N;
-            c++
-        ){
+        for(let c=0;c<N;c++){
 
             if(
                 b[r][c]?.player!==p
-            ){
-                continue;
-            }
+            )continue;
 
             legal(
                 b,
                 r,
                 c,
                 p
-            ).forEach(
-                to =>
-                    out.push({
-                        from:{r,c},
-                        to,
-                        piece:b[r][c]
-                    })
+            ).forEach(to=>
+                out.push({
+                    from:{r,c},
+                    to,
+                    piece:b[r][c]
+                })
             );
         }
     }
@@ -1645,25 +1216,17 @@ function allLegal(
    SCORING
 ========================================================= */
 
-function captureValue(
-    piece
-){
+function captureValue(piece){
 
     if(
         !piece||
         piece.player==="gray"
-    ){
-        return 0;
-    }
+    )return 0;
 
     /*
-     * Promoted queens are worth only 1 point.
+     * Promoted queens are worth 1 point when captured.
      */
-    if(
-        piece.promoted
-    ){
-        return 1;
-    }
+    if(piece.promoted)return 1;
 
     return VALUES[piece.type]||0;
 }
@@ -1674,40 +1237,30 @@ function checkedPlayers(
     elim
 ){
 
-    return P.filter(
-        target=>{
+    return P.filter(target=>{
 
-            if(
-                target===attacker||
-                elim[target]
-            ){
-                return false;
-            }
+        if(
+            target===attacker||
+            elim[target]
+        )return false;
 
-            const k=
-                king(
-                    b,
-                    target
-                );
+        if(!king(b,target))return false;
 
-            if(!k){
-                return false;
-            }
-
-            return attacks(
+        return attacks(
+            b,
+            king(
                 b,
-                k.r,
-                k.c,
-                attacker
-            );
-        }
-    );
+                target
+            ).r,
+            king(
+                b,
+                target
+            ).c,
+            attacker
+        );
+    });
 }
 
-/*
- * Award simultaneous-check bonuses only when a move
- * newly creates the multi-check.
- */
 function simultaneousCheckBonus(
     before,
     after,
@@ -1732,8 +1285,7 @@ function simultaneousCheckBonus(
 
     const newly=
         afterChecked.filter(
-            p =>
-                !beforeChecked.includes(p)
+            p=>!beforeChecked.includes(p)
         );
 
     if(
@@ -1750,9 +1302,7 @@ function simultaneousCheckBonus(
     const queen=
         moving.type==="q";
 
-    if(
-        afterChecked.length>=3
-    ){
+    if(afterChecked.length>=3){
 
         return{
             points:queen?5:20,
@@ -1770,127 +1320,43 @@ function simultaneousCheckBonus(
    SVG PIECES
 ========================================================= */
 
-function svg(
-    t,
-    pl
-){
+function svg(t,pl){
 
-    const[
+    const [
         fill,
         stroke,
         accent
-    ]=
-        COLORS[pl]||
-        COLORS.gray;
+    ]=COLORS[pl]||COLORS.gray;
 
     const pieces={
 
-        p:`
-        <path
-            d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
+        p:
+        `<path d="M12 28C12 28 14 20 12 16C10 13 11 9 16 8C21 9 22 13 20 16C18 20 20 28 20 28Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <circle cx="16" cy="7" r="4" fill="${accent}" stroke="${stroke}" stroke-width="1.5"/>
+        <path d="M9 28L23 28L21 31L11 31Z" fill="${stroke}"/>`,
 
-        <circle
-            cx="16"
-            cy="7"
-            r="4"
-            fill="${accent}"
-            stroke="${stroke}"
-            stroke-width="1.5"/>
+        r:
+        `<path d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <rect x="8" y="27" width="16" height="4" rx="1" fill="${stroke}"/>`,
 
-        <path
-            d="M9 28L23 28L21 31L11 31Z"
-            fill="${stroke}"/>
-        `,
+        n:
+        `<path d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <circle cx="12" cy="11" r="1.5" fill="${accent}"/>`,
 
-        r:`
-        <path
-            d="M9 29L23 29L22 15L20 15L20 18L17 18L17 15L15 15L15 18L12 18L12 15L10 15L9 29Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
+        b:
+        `<path d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <circle cx="16" cy="6" r="2.5" fill="${accent}" stroke="${stroke}" stroke-width="1"/>`,
 
-        <rect
-            x="8"
-            y="27"
-            width="16"
-            height="4"
-            rx="1"
-            fill="${stroke}"/>
-        `,
+        q:
+        `<path d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <circle cx="16" cy="9" r="2" fill="${accent}"/>`,
 
-        n:`
-        <path
-            d="M9 29L23 29C23 29 24 21 21 17C19 14 19 10 15 8C12 8 10 11 10 14C10 17 8 18 7 20C6 22 8 25 11 24Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="12"
-            cy="11"
-            r="1.5"
-            fill="${accent}"/>
-        `,
-
-        b:`
-        <path
-            d="M9 29L23 29L21 20C23 16 21 11 16 9C11 11 9 16 11 20Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="16"
-            cy="6"
-            r="2.5"
-            fill="${accent}"
-            stroke="${stroke}"
-            stroke-width="1"/>
-        `,
-
-        q:`
-        <path
-            d="M8 29L24 29L23 16L19 22L16 12L13 22L9 16Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <circle
-            cx="16"
-            cy="9"
-            r="2"
-            fill="${accent}"/>
-        `,
-
-        k:`
-        <path
-            d="M8 29L24 29L22 17L16 14L10 17Z"
-            fill="${fill}"
-            stroke="${stroke}"
-            stroke-width="2"/>
-
-        <line
-            x1="16"
-            y1="6"
-            x2="16"
-            y2="13"
-            stroke="${accent}"
-            stroke-width="2.5"/>
-        `
+        k:
+        `<path d="M8 29L24 29L22 17L16 14L10 17Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <line x1="16" y1="6" x2="16" y2="13" stroke="${accent}" stroke-width="2.5"/>`
     };
 
-    return`
-        <svg
-            viewBox="0 0 32 32"
-            class="svg">
-
-            ${pieces[t]||""}
-
-        </svg>
-    `;
+    return `<svg viewBox="0 0 32 32" class="svg">${pieces[t]||""}</svg>`;
 }
 
 /* =========================================================
@@ -1899,16 +1365,14 @@ function svg(
 
 function render(){
 
-    const boardEl=
-        $("board");
+    const boardEl=$("board");
 
     boardEl.innerHTML="";
 
     boardEl.style.transform=
         `rotate(${S.rotation}deg)`;
 
-    const active=
-        P[S.turn];
+    const active=P[S.turn];
 
     const activeCheck=
         !S.gameOver&&
@@ -1917,36 +1381,22 @@ function render(){
             active
         );
 
-    for(
-        let r=0;
-        r<N;
-        r++
-    ){
+    for(let r=0;r<N;r++){
 
-        for(
-            let c=0;
-            c<N;
-            c++
-        ){
+        for(let c=0;c<N;c++){
 
             const square=
-                document.createElement(
-                    "div"
-                );
+                document.createElement("div");
 
             square.dataset.row=r;
             square.dataset.col=c;
 
-            if(
-                !valid(r,c)
-            ){
+            if(!valid(r,c)){
 
                 square.className=
                     "square off";
 
-                boardEl.appendChild(
-                    square
-                );
+                boardEl.appendChild(square);
 
                 continue;
             }
@@ -1955,8 +1405,8 @@ function render(){
                 "square "+
                 (
                     (r+c)%2
-                        ? "dark"
-                        : "light"
+                        ?"dark"
+                        :"light"
                 );
 
             if(
@@ -1983,9 +1433,7 @@ function render(){
                 )
             ){
 
-                square.classList.add(
-                    "last"
-                );
+                square.classList.add("last");
             }
 
             if(
@@ -1994,9 +1442,7 @@ function render(){
                 S.last.to?.c===c
             ){
 
-                square.classList.add(
-                    "flash"
-                );
+                square.classList.add("flash");
             }
 
             if(
@@ -2005,32 +1451,26 @@ function render(){
                 S.board[r][c]?.type==="k"
             ){
 
-                square.classList.add(
-                    "check"
-                );
+                square.classList.add("check");
             }
 
             if(
                 S.moves.some(
-                    x =>
+                    x=>
                         x.r===r&&
                         x.c===c
                 )
             ){
 
                 const marker=
-                    document.createElement(
-                        "div"
-                    );
+                    document.createElement("div");
 
                 marker.className=
                     S.board[r][c]
-                        ? "ring"
-                        : "dot";
+                        ?"ring"
+                        :"dot";
 
-                square.appendChild(
-                    marker
-                );
+                square.appendChild(marker);
             }
 
             const piece=
@@ -2039,12 +1479,9 @@ function render(){
             if(piece){
 
                 const wrapper=
-                    document.createElement(
-                        "div"
-                    );
+                    document.createElement("div");
 
-                wrapper.className=
-                    "piece";
+                wrapper.className="piece";
 
                 wrapper.style.transform=
                     `rotate(-${S.rotation}deg)`;
@@ -2058,9 +1495,7 @@ function render(){
                         "arrive"
                     );
 
-                    if(
-                        S.last.promotion
-                    ){
+                    if(S.last.promotion){
 
                         wrapper.classList.add(
                             "promo"
@@ -2074,32 +1509,21 @@ function render(){
                         piece.player
                     );
 
-                if(
-                    piece.promoted
-                ){
+                if(piece.promoted){
 
                     const badge=
-                        document.createElement(
-                            "div"
-                        );
+                        document.createElement("div");
 
-                    badge.className=
-                        "badge";
-
-                    badge.textContent=
-                        "1";
+                    badge.className="badge";
+                    badge.textContent="1";
 
                     badge.style.transform=
                         `rotate(-${S.rotation}deg)`;
 
-                    wrapper.appendChild(
-                        badge
-                    );
+                    wrapper.appendChild(badge);
                 }
 
-                square.appendChild(
-                    wrapper
-                );
+                square.appendChild(wrapper);
             }
 
             square.addEventListener(
@@ -2112,14 +1536,10 @@ function render(){
                         c
                     );
                 },
-                {
-                    passive:false
-                }
+                {passive:false}
             );
 
-            boardEl.appendChild(
-                square
-            );
+            boardEl.appendChild(square);
         }
     }
 
@@ -2130,35 +1550,23 @@ function render(){
    HUMAN INPUT
 ========================================================= */
 
-function clickSquare(
-    r,
-    c
-){
+function clickSquare(r,c){
 
-    if(
-        S.gameOver
-    ){
-        return;
-    }
+    if(S.gameOver)return;
 
-    const active=
-        P[S.turn];
+    const active=P[S.turn];
 
     if(
         S.seat!==active||
         S.bots[active]||
         S.elim[active]
-    ){
-        return;
-    }
+    )return;
 
-    if(
-        S.selected
-    ){
+    if(S.selected){
 
         const chosen=
             S.moves.find(
-                x =>
+                x=>
                     x.r===r&&
                     x.c===c
             );
@@ -2174,17 +1582,12 @@ function clickSquare(
                 c
             };
 
-            if(
-                chosen.castle
-            ){
-
+            if(chosen.castle){
                 to.castle=
                     chosen.castle;
             }
 
-            S.selected=
-                null;
-
+            S.selected=null;
             S.moves=[];
 
             render();
@@ -2239,6 +1642,15 @@ function sendMove(
 ){
 
     if(!ref){
+
+        if(isBot){
+
+            botPending=false;
+            botSig=null;
+
+            scheduleController();
+        }
+
         return;
     }
 
@@ -2248,9 +1660,7 @@ function sendMove(
             if(
                 !data||
                 data.gameOver
-            ){
-                return;
-            }
+            )return;
 
             let board;
 
@@ -2267,12 +1677,9 @@ function sendMove(
             }
 
             const idx=
-                Number(
-                    data.turn
-                )||0;
+                Number(data.turn)||0;
 
-            const player=
-                P[idx];
+            const player=P[idx];
 
             const elim={
                 red:false,
@@ -2282,21 +1689,24 @@ function sendMove(
                 ...(data.elim||{})
             };
 
-            if(
-                elim[player]
-            ){
-                return;
-            }
+            if(elim[player])return;
 
+            /*
+             * Bots can only move when:
+             * 1. This client is the host.
+             * 2. The current seat is marked as a bot.
+             *
+             * Humans must own the current seat.
+             */
             const authorized=
                 isBot
-                    ? data.bots?.[player]===true&&
-                      data.host===uid
+                    ? (
+                        data.host===uid&&
+                        data.bots?.[player]===true
+                    )
                     : data.seats?.[player]===uid;
 
-            if(!authorized){
-                return;
-            }
+            if(!authorized)return;
 
             const piece=
                 board[from.r]?.[from.c];
@@ -2304,42 +1714,40 @@ function sendMove(
             if(
                 !piece||
                 piece.player!==player
-            ){
-                return;
-            }
+            )return;
 
+            /*
+             * Recalculate legal moves against the
+             * authoritative Firebase board.
+             */
             const chosen=
                 legal(
                     board,
                     from.r,
                     from.c,
                     player
-                ).find(
-                    m =>
-                        m.r===to.r&&
-                        m.c===to.c&&
-                        !!m.castle===!!to.castle&&
-                        (
-                            !m.castle||
-                            m.castle===to.castle
-                        )
+                ).find(m=>
+                    m.r===to.r&&
+                    m.c===to.c&&
+                    !!m.castle===!!to.castle&&
+                    (
+                        !m.castle||
+                        m.castle===to.castle
+                    )
                 );
 
-            if(!chosen){
-                return;
-            }
+            if(!chosen)return;
 
             const captured=
                 chosen.castle
-                    ? null
-                    : board[
+                    ?null
+                    :board[
                         chosen.r
-                    ][
+                    ]?.[
                         chosen.c
                     ];
 
-            const before=
-                board;
+            const before=board;
 
             const after=
                 apply(
@@ -2351,7 +1759,7 @@ function sendMove(
             const moving=
                 after[
                     chosen.r
-                ][
+                ]?.[
                     chosen.c
                 ];
 
@@ -2386,8 +1794,7 @@ function sendMove(
                     Number(
                         scores[player]
                     )||0
-                )+
-                points;
+                )+points;
 
             const nextElim={
                 ...elim
@@ -2400,7 +1807,6 @@ function sendMove(
                 );
 
             return{
-
                 ...data,
 
                 boardStr:
@@ -2417,7 +1823,6 @@ function sendMove(
                 scores,
 
                 last:{
-
                     from:{
                         ...from
                     },
@@ -2445,7 +1850,7 @@ function sendMove(
                         null,
 
                     promotion:
-                        !!moving.promoted,
+                        !!moving?.promoted,
 
                     points,
 
@@ -2465,11 +1870,7 @@ function sendMove(
             };
 
         },
-
-        (
-            error,
-            committed
-        )=>{
+        (error,committed)=>{
 
             if(error){
 
@@ -2481,10 +1882,21 @@ function sendMove(
 
             if(isBot){
 
+                /*
+                 * This is critical:
+                 * never leave the bot permanently locked.
+                 */
                 botPending=false;
                 botSig=null;
 
-                scheduleController();
+                /*
+                 * Check again after Firebase has
+                 * finished the transaction.
+                 */
+                setTimeout(
+                    scheduleController,
+                    300
+                );
             }
         }
     );
@@ -2499,9 +1911,7 @@ function eliminateCurrent(
     reason
 ){
 
-    if(!ref){
-        return;
-    }
+    if(!ref)return;
 
     ref.transaction(
         data=>{
@@ -2510,20 +1920,12 @@ function eliminateCurrent(
                 !data||
                 data.gameOver||
                 data.host!==uid
-            ){
-                return;
-            }
+            )return;
 
             const idx=
-                Number(
-                    data.turn
-                )||0;
+                Number(data.turn)||0;
 
-            if(
-                P[idx]!==player
-            ){
-                return;
-            }
+            if(P[idx]!==player)return;
 
             let board;
 
@@ -2547,26 +1949,15 @@ function eliminateCurrent(
                 ...(data.elim||{})
             };
 
-            if(
-                e[player]
-            ){
-                return;
-            }
+            if(e[player])return;
 
-            /*
-             * Recompute from authoritative data.
-             */
             const legalNow=
                 allLegal(
                     board,
                     player
                 );
 
-            if(
-                legalNow.length
-            ){
-                return;
-            }
+            if(legalNow.length)return;
 
             const check=
                 inCheck(
@@ -2576,8 +1967,8 @@ function eliminateCurrent(
 
             const actualReason=
                 check
-                    ? "checkmate"
-                    : "stalemate";
+                    ?"checkmate"
+                    :"stalemate";
 
             if(
                 reason!==actualReason
@@ -2595,12 +1986,9 @@ function eliminateCurrent(
                 ...(data.scores||{})
             };
 
-            let awardedTo=
-                null;
+            let awardedTo=null;
 
-            if(
-                reason==="checkmate"
-            ){
+            if(reason==="checkmate"){
 
                 const k=
                     king(
@@ -2632,18 +2020,16 @@ function eliminateCurrent(
                     }else{
 
                         awardedTo=
-                            P.find(
-                                o =>
-                                    o!==player&&
-                                    !e[o]&&
-                                    attacks(
-                                        board,
-                                        k.r,
-                                        k.c,
-                                        o
-                                    )
-                            )||
-                            null;
+                            P.find(o=>
+                                o!==player&&
+                                !e[o]&&
+                                attacks(
+                                    board,
+                                    k.r,
+                                    k.c,
+                                    o
+                                )
+                            )||null;
                     }
 
                     if(awardedTo){
@@ -2653,39 +2039,25 @@ function eliminateCurrent(
                                 Number(
                                     scores[awardedTo]
                                 )||0
-                            )+
-                            20;
+                            )+20;
                     }
                 }
 
             }else{
 
-                /*
-                 * Stalemate gives the stalemated player 20.
-                 */
                 scores[player]=
                     (
                         Number(
                             scores[player]
                         )||0
-                    )+
-                    20;
+                    )+20;
             }
 
-            e[player]=
-                true;
+            e[player]=true;
 
-            for(
-                let r=0;
-                r<N;
-                r++
-            ){
+            for(let r=0;r<N;r++){
 
-                for(
-                    let c=0;
-                    c<N;
-                    c++
-                ){
+                for(let c=0;c<N;c++){
 
                     const piece=
                         board[r][c];
@@ -2705,8 +2077,7 @@ function eliminateCurrent(
 
             const alive=
                 P.filter(
-                    x =>
-                        !e[x]
+                    x=>!e[x]
                 );
 
             const gameOver=
@@ -2714,14 +2085,13 @@ function eliminateCurrent(
 
             const nextIdx=
                 gameOver
-                    ? idx
-                    : nextTurn(
+                    ?idx
+                    :nextTurn(
                         idx,
                         e
                     );
 
             return{
-
                 ...data,
 
                 boardStr:
@@ -2739,7 +2109,6 @@ function eliminateCurrent(
                 gameOver,
 
                 last:{
-
                     ...(data.last||{}),
 
                     elimination:
@@ -2752,8 +2121,7 @@ function eliminateCurrent(
                         awardedTo||
                         player,
 
-                    points:
-                        20,
+                    points:20,
 
                     timestamp:
                         firebase.database
@@ -2761,9 +2129,7 @@ function eliminateCurrent(
                             .TIMESTAMP
                 }
             };
-
         },
-
         error=>{
 
             if(error){
@@ -2781,6 +2147,35 @@ function eliminateCurrent(
    BOT CONTROLLER
 ========================================================= */
 
+/*
+ * Clears every pending bot/controller timer.
+ * This prevents an old room or old turn from leaving
+ * the bot controller locked.
+ */
+function clearBotTimers(){
+
+    if(controllerTimer){
+
+        clearTimeout(
+            controllerTimer
+        );
+
+        controllerTimer=null;
+    }
+
+    if(botTimer){
+
+        clearTimeout(
+            botTimer
+        );
+
+        botTimer=null;
+    }
+
+    botPending=false;
+    botSig=null;
+}
+
 function controllerSignature(){
 
     return JSON.stringify([
@@ -2795,55 +2190,65 @@ function controllerSignature(){
 
 function isHost(){
 
-    return(
+    return (
         S.host===uid&&
         !S.gameOver
     );
 }
 
+/*
+ * The host drives all computer players.
+ */
 function scheduleController(){
 
     if(
         !isHost()||
         controllerTimer||
         botPending
-    ){
-        return;
-    }
+    )return;
 
     controllerTimer=
-        setTimeout(
-            controllerTick,
-            250
-        );
+        setTimeout(()=>{
+
+            controllerTimer=null;
+
+            controllerTick();
+
+        },300);
 }
 
 function controllerTick(){
 
-    controllerTimer=null;
-
-    if(!isHost()){
-        return;
-    }
+    if(!isHost())return;
 
     const player=
         P[S.turn];
 
     if(
+        !player||
         S.elim[player]
     ){
+
+        scheduleController();
+
         return;
     }
 
-    const legalMoves=
+    /*
+     * Always calculate moves from the
+     * latest board.
+     */
+    const moves=
         allLegal(
             S.board,
             player
         );
 
-    if(
-        !legalMoves.length
-    ){
+    /*
+     * No legal moves means checkmate
+     * or stalemate.
+     */
+    if(!moves.length){
 
         eliminateCurrent(
             player,
@@ -2851,21 +2256,25 @@ function controllerTick(){
                 S.board,
                 player
             )
-                ? "checkmate"
-                : "stalemate"
+                ?"checkmate"
+                :"stalemate"
         );
 
         return;
     }
 
-    if(
-        S.bots[player]
-    ){
+    /*
+     * Human turn.
+     */
+    if(!S.bots[player])return;
 
-        scheduleBot(
-            player
-        );
-    }
+    /*
+     * Bot turn.
+     */
+    scheduleBot(
+        player,
+        moves
+    );
 }
 
 function botScoreMove(
@@ -2881,16 +2290,22 @@ function botScoreMove(
         ];
 
     let score=
-        Math.random()*2;
+        Math.random()*3;
 
+    /*
+     * Prefer captures.
+     */
     if(target){
 
         score+=
             captureValue(
                 target
-            )*12;
+            )*15;
     }
 
+    /*
+     * Strongly prefer promotion.
+     */
     if(
         move.piece.type==="p"&&
         shouldPromote(
@@ -2900,16 +2315,19 @@ function botScoreMove(
         )
     ){
 
-        score+=100;
+        score+=150;
     }
 
-    if(
-        move.castle
-    ){
-
-        score+=2;
+    /*
+     * Small castling bonus.
+     */
+    if(move.castle){
+        score+=4;
     }
 
+    /*
+     * Prefer checks.
+     */
     const next=
         apply(
             S.board,
@@ -2917,16 +2335,16 @@ function botScoreMove(
             move
         );
 
-    const afterChecks=
+    const beforeChecks=
         checkedPlayers(
-            next,
+            S.board,
             player,
             S.elim
         ).length;
 
-    const beforeChecks=
+    const afterChecks=
         checkedPlayers(
-            S.board,
+            next,
             player,
             S.elim
         ).length;
@@ -2936,19 +2354,24 @@ function botScoreMove(
         beforeChecks
     ){
 
-        score+=
-            (
-                afterChecks>=3
-                    ? 25
-                    : afterChecks>=2
-                        ? 10
-                        : 3
-            );
+        if(afterChecks>=3){
+
+            score+=30;
+
+        }else if(afterChecks>=2){
+
+            score+=15;
+
+        }else{
+
+            score+=5;
+        }
     }
 
-    if(
-        move.piece.type==="p"
-    ){
+    /*
+     * Encourage pawns to advance.
+     */
+    if(move.piece.type==="p"){
 
         const d=
             DIR[player];
@@ -2958,203 +2381,174 @@ function botScoreMove(
                 (
                     move.to.r-
                     move.from.r
-                )*
-                d.r
-            )+
-            (
+                )*d.r+
                 (
                     move.to.c-
                     move.from.c
-                )*
-                d.c
-            )*
-            1.5;
+                )*d.c
+            )*2;
     }
 
+    /*
+     * Slightly discourage unnecessary
+     * king movement.
+     */
     if(
         move.piece.type==="k"&&
         !move.castle
     ){
 
-        score-=2;
+        score-=3;
     }
 
     return score;
 }
 
 function scheduleBot(
-    player
+    player,
+    moves
 ){
 
     if(
         botPending||
         !isHost()||
-        !S.bots[player]
-    ){
-        return;
-    }
+        !S.bots[player]||
+        P[S.turn]!==player
+    )return;
 
-    const sig=
-        controllerSignature();
-
-    if(
-        botSig===sig
-    ){
-        return;
-    }
+    botPending=true;
 
     botSig=
-        sig;
+        controllerSignature();
 
-    botPending=
-        true;
+    /*
+     * Rank moves by tactical value.
+     */
+    moves.sort(
+        (a,b)=>
+            botScoreMove(
+                b,
+                player
+            )-
+            botScoreMove(
+                a,
+                player
+            )
+    );
 
-    botTimer=
-        setTimeout(
-            ()=>{
-
-                botTimer=null;
-
-                if(
-                    !isHost()||
-                    P[S.turn]!==player||
-                    !S.bots[player]||
-                    controllerSignature()!==sig
-                ){
-
-                    botPending=false;
-                    botSig=null;
-                    scheduleController();
-                    return;
-                }
-
-                const moves=
-                    allLegal(
-                        S.board,
-                        player
-                    );
-
-                if(
-                    !moves.length
-                ){
-
-                    botPending=false;
-                    botSig=null;
-
-                    eliminateCurrent(
-                        player,
-                        inCheck(
-                            S.board,
-                            player
-                        )
-                            ? "checkmate"
-                            : "stalemate"
-                    );
-
-                    return;
-                }
-
-                moves.sort(
-                    (a,b)=>
-                        botScoreMove(
-                            b,
-                            player
-                        )-
-                        botScoreMove(
-                            a,
-                            player
-                        )
-                );
-
-                const top=
-                    Math.min(
-                        4,
-                        moves.length
-                    );
-
-                const choice=
-                    moves[
-                        Math.floor(
-                            Math.random()*top
-                        )
-                    ];
-
-                setTimeout(
-                    ()=>{
-
-                        if(
-                            !isHost()||
-                            P[S.turn]!==player||
-                            !S.bots[player]||
-                            controllerSignature()!==sig
-                        ){
-
-                            botPending=false;
-                            botSig=null;
-                            scheduleController();
-                            return;
-                        }
-
-                        const stillLegal=
-                            legal(
-                                S.board,
-                                choice.from.r,
-                                choice.from.c,
-                                player
-                            ).some(
-                                m =>
-                                    m.r===choice.to.r&&
-                                    m.c===choice.to.c&&
-                                    !!m.castle===
-                                        !!choice.to.castle&&
-                                    (
-                                        !m.castle||
-                                        m.castle===
-                                            choice.to.castle
-                                    )
-                            );
-
-                        if(
-                            !stillLegal
-                        ){
-
-                            botPending=false;
-                            botSig=null;
-                            scheduleController();
-                            return;
-                        }
-
-                        sendMove(
-                            choice.from,
-                            choice.to,
-                            true
-                        );
-
-                    },
-                    180
-                );
-
-            },
-            450
+    /*
+     * Randomly choose from the five
+     * best moves so the bot isn't deterministic.
+     */
+    const top=
+        Math.min(
+            5,
+            moves.length
         );
+
+    const choice=
+        moves[
+            Math.floor(
+                Math.random()*top
+            )
+        ];
+
+    /*
+     * Small thinking delay.
+     */
+    botTimer=
+        setTimeout(()=>{
+
+            botTimer=null;
+
+            /*
+             * Verify the position is still
+             * the same player's turn.
+             */
+            if(
+                !isHost()||
+                P[S.turn]!==player||
+                !S.bots[player]||
+                S.elim[player]
+            ){
+
+                botPending=false;
+                botSig=null;
+
+                scheduleController();
+
+                return;
+            }
+
+            /*
+             * Recalculate legal moves immediately
+             * before submitting.
+             */
+            const currentMoves=
+                allLegal(
+                    S.board,
+                    player
+                );
+
+            const stillLegal=
+                currentMoves.find(m=>
+                    m.from.r===
+                        choice.from.r&&
+
+                    m.from.c===
+                        choice.from.c&&
+
+                    m.to.r===
+                        choice.to.r&&
+
+                    m.to.c===
+                        choice.to.c&&
+
+                    !!m.to.castle===
+                        !!choice.to.castle&&
+
+                    (
+                        !m.to.castle||
+                        m.to.castle===
+                            choice.to.castle
+                    )
+                );
+
+            if(!stillLegal){
+
+                botPending=false;
+                botSig=null;
+
+                scheduleController();
+
+                return;
+            }
+
+            /*
+             * Firebase will perform the final
+             * authoritative legality check.
+             */
+            sendMove(
+                choice.from,
+                stillLegal.to,
+                true
+            );
+
+        },700);
 }
 
 /* =========================================================
    SEATS
 ========================================================= */
 
-function claim(
-    seat
-){
+function claim(seat){
 
     if(
         !ref||
         seat==="red"||
         S.bots[seat]||
         S.gameOver
-    ){
-        return;
-    }
+    )return;
 
     const seatRef=
         ref.child(
@@ -3164,36 +2558,22 @@ function claim(
     seatRef.transaction(
         x=>{
 
-            if(x==null){
-                return uid;
-            }
+            if(x==null)return uid;
 
-            if(
-                x===uid
-            ){
-                return uid;
-            }
+            if(x===uid)return uid;
 
             return;
         },
-
-        (
-            error,
-            committed
-        )=>{
+        (error,committed)=>{
 
             if(
                 error||
                 !committed
-            ){
-                return;
-            }
+            )return;
 
-            ref
-                .child(
-                    "bots/"+seat
-                )
-                .set(false);
+            ref.child(
+                "bots/"+seat
+            ).set(false);
         }
     );
 }
@@ -3210,13 +2590,9 @@ function generateRoomCode(){
         .toUpperCase();
 }
 
-function roomCreate(
-    botCount
-){
+function roomCreate(botCount){
 
-    if(creating){
-        return;
-    }
+    if(creating)return;
 
     creating=true;
 
@@ -3227,9 +2603,7 @@ function roomCreate(
 
     const attempt=()=>{
 
-        if(
-            ++tries>12
-        ){
+        if(++tries>12){
 
             creating=false;
 
@@ -3250,9 +2624,7 @@ function roomCreate(
         roomRef.transaction(
             current=>{
 
-                if(
-                    current!==null
-                ){
+                if(current!==null){
                     return;
                 }
 
@@ -3281,13 +2653,11 @@ function roomCreate(
 
                     seats[
                         BOT_SEATS[i]
-                    ]=
-                        "BOT";
+                    ]="BOT";
 
                     bots[
                         BOT_SEATS[i]
-                    ]=
-                        true;
+                    ]=true;
                 }
 
                 return{
@@ -3323,13 +2693,8 @@ function roomCreate(
 
                     last:null
                 };
-
             },
-
-            (
-                error,
-                committed
-            )=>{
+            (error,committed)=>{
 
                 if(
                     error||
@@ -3337,41 +2702,33 @@ function roomCreate(
                 ){
 
                     attempt();
+
                     return;
                 }
 
-                roomCode=
-                    code;
+                roomCode=code;
+                ref=roomRef;
 
-                ref=
-                    roomRef;
+                /*
+                 * Start with a clean bot controller.
+                 */
+                clearBotTimers();
 
-                S.seat=
-                    "red";
-
-                S.host=
-                    uid;
-
-                S.rotation=
-                    0;
-
-                S.manual=
-                    false;
+                S.seat="red";
+                S.host=uid;
+                S.rotation=0;
+                S.manual=false;
 
                 $("room").textContent=
                     "Room: "+code;
 
                 $("lobby")
                     .classList
-                    .add(
-                        "hidden"
-                    );
+                    .add("hidden");
 
                 creating=false;
 
-                subscribe(
-                    code
-                );
+                subscribe(code);
             }
         );
     };
@@ -3381,9 +2738,7 @@ function roomCreate(
 
 function joinRoom(){
 
-    if(joining){
-        return;
-    }
+    if(joining)return;
 
     const code=
         $("code")
@@ -3391,11 +2746,7 @@ function joinRoom(){
             .trim()
             .toUpperCase();
 
-    if(
-        !/^[A-Z0-9]{6}$/.test(
-            code
-        )
-    ){
+    if(!/^[A-Z0-9]{6}$/.test(code)){
 
         $("status").textContent=
             "Enter a 6-character room code.";
@@ -3413,15 +2764,10 @@ function joinRoom(){
             "rooms/"+code
         );
 
-    r.once(
-        "value"
-    )
-    .then(
-        snapshot=>{
+    r.once("value")
+        .then(snapshot=>{
 
-            if(
-                !snapshot.exists()
-            ){
+            if(!snapshot.exists()){
 
                 $("status").textContent=
                     "Room not found.";
@@ -3429,47 +2775,37 @@ function joinRoom(){
                 return;
             }
 
-            roomCode=
-                code;
-
-            ref=
-                r;
+            roomCode=code;
+            ref=r;
 
             $("room").textContent=
                 "Room: "+code;
 
             $("lobby")
                 .classList
-                .add(
-                    "hidden"
-                );
+                .add("hidden");
 
-            subscribe(
-                code
-            );
-        }
-    )
-    .catch(
-        error=>{
+            subscribe(code);
+        })
+        .catch(error=>{
 
-            console.error(
-                error
-            );
+            console.error(error);
 
             $("status").textContent=
                 "Could not connect to room.";
-        }
-    )
-    .finally(
-        ()=>{
+        })
+        .finally(()=>{
+
             joining=false;
-        }
-    );
+        });
 }
 
-function subscribe(
-    code
-){
+function subscribe(code){
+
+    /*
+     * Stop any bot/controller from a previous room.
+     */
+    clearBotTimers();
 
     if(
         ref&&
@@ -3493,9 +2829,7 @@ function subscribe(
             const data=
                 snapshot.val();
 
-            if(!data){
-                return;
-            }
+            if(!data)return;
 
             let board;
 
@@ -3511,8 +2845,7 @@ function subscribe(
                 return;
             }
 
-            S.board=
-                board;
+            S.board=board;
 
             S.turn=
                 Number(
@@ -3564,16 +2897,14 @@ function subscribe(
 
             const mySeat=
                 P.find(
-                    p =>
+                    p=>
                         S.seats[p]===uid
-                )||
-                null;
+                )||null;
 
             const changed=
                 S.seat!==mySeat;
 
-            S.seat=
-                mySeat;
+            S.seat=mySeat;
 
             if(
                 changed&&
@@ -3593,14 +2924,16 @@ function subscribe(
                 S.seat!==active
             ){
 
-                S.selected=
-                    null;
-
+                S.selected=null;
                 S.moves=[];
             }
 
             render();
 
+            /*
+             * This is what starts the bot when the
+             * Firebase state says it is a bot's turn.
+             */
             scheduleController();
         };
 
@@ -3618,15 +2951,11 @@ $("create").onclick=()=>{
 
     $("lobby-main")
         .classList
-        .add(
-            "hidden"
-        );
+        .add("hidden");
 
     $("bots")
         .classList
-        .remove(
-            "hidden"
-        );
+        .remove("hidden");
 
     $("status").textContent="";
 };
@@ -3635,15 +2964,11 @@ $("back").onclick=()=>{
 
     $("bots")
         .classList
-        .add(
-            "hidden"
-        );
+        .add("hidden");
 
     $("lobby-main")
         .classList
-        .remove(
-            "hidden"
-        );
+        .remove("hidden");
 
     $("status").textContent="";
 };
@@ -3671,69 +2996,59 @@ $("confirm").onclick=()=>{
 $("join").onclick=
     joinRoom;
 
-$("code").oninput=
-    e =>
-        e.target.value=
-            e.target.value
-                .replace(
-                    /[^a-z0-9]/gi,
-                    ""
-                )
-                .toUpperCase()
-                .slice(
-                    0,
-                    6
-                );
+$("code").oninput=e=>
+    e.target.value=
+        e.target.value
+            .replace(
+                /[^a-z0-9]/gi,
+                ""
+            )
+            .toUpperCase()
+            .slice(0,6);
 
-$("code").onkeydown=
-    e=>{
-        if(
-            e.key==="Enter"
-        ){
-            joinRoom();
-        }
-    };
+$("code").onkeydown=e=>{
+
+    if(e.key==="Enter"){
+        joinRoom();
+    }
+};
 
 document
     .querySelectorAll(
         ".botcount"
     )
-    .forEach(
-        x =>
-            x.addEventListener(
-                "change",
-                ()=>{
-                    document
-                        .querySelectorAll(
-                            ".bot-card"
-                        )
-                        .forEach(
-                            card =>
-                                card.classList.remove(
-                                    "border-indigo-500",
-                                    "bg-indigo-950/40"
-                                )
-                        );
+    .forEach(x=>
+        x.addEventListener(
+            "change",
+            ()=>{
 
-                    const checked=
-                        document.querySelector(
-                            'input[name="bc"]:checked'
-                        );
-
-                    checked
-                        ?.nextElementSibling
-                        ?.classList
-                        .add(
+                document
+                    .querySelectorAll(
+                        ".bot-card"
+                    )
+                    .forEach(card=>
+                        card.classList.remove(
                             "border-indigo-500",
                             "bg-indigo-950/40"
-                        );
-                }
-            )
+                        )
+                    );
+
+                const checked=
+                    document.querySelector(
+                        'input[name="bc"]:checked'
+                    );
+
+                checked
+                    ?.nextElementSibling
+                    ?.classList
+                    .add(
+                        "border-indigo-500",
+                        "bg-indigo-950/40"
+                    );
+            }
+        )
     );
 
-/*
- * Initial selected bot option styling.
- */
 document
     .querySelector(
         'input[name="bc"]:checked'
@@ -3749,75 +3064,65 @@ document
     .querySelectorAll(
         ".seat"
     )
-    .forEach(
-        button=>{
-            button.onclick=
-                () =>
-                    claim(
-                        button.dataset.seat
-                    );
-        }
-    );
+    .forEach(button=>{
+
+        button.onclick=()=>
+            claim(
+                button.dataset.seat
+            );
+    });
 
 $("rotate").onclick=()=>{
 
-    S.manual=
-        true;
+    S.manual=true;
 
     S.rotation=
         (
-            S.rotation+
-            90
+            S.rotation+90
         )%360;
 
     render();
 };
 
-$("share").onclick=
-    async()=>{
+$("share").onclick=async()=>{
 
-        if(!roomCode){
+    if(!roomCode)return;
+
+    try{
+
+        if(navigator.share){
+
+            await navigator.share({
+                title:"4-Player Chess",
+                text:
+                    `Join my 4-Player Chess game! Room Code: ${roomCode}`
+            });
+
             return;
         }
 
-        try{
+    }catch{}
 
-            if(
-                navigator.share
-            ){
+    try{
 
-                await navigator.share({
-                    title:
-                        "4-Player Chess",
-
-                    text:
-                        `Join my 4-Player Chess game! Room Code: ${roomCode}`
-                });
-
-                return;
-            }
-
-        }catch{}
-
-        try{
-
-            await navigator.clipboard.writeText(
+        await navigator.clipboard
+            .writeText(
                 roomCode
             );
 
-            alert(
-                "Room code copied: "+
-                roomCode
-            );
+        alert(
+            "Room code copied: "+
+            roomCode
+        );
 
-        }catch{
+    }catch{
 
-            alert(
-                "Room Code: "+
-                roomCode
-            );
-        }
-    };
+        alert(
+            "Room Code: "+
+            roomCode
+        );
+    }
+};
 
 function Pname(p){
 
@@ -3839,146 +3144,133 @@ function updateUI(){
             active
         );
 
-    if(
-        S.gameOver
-    ){
+    if(S.gameOver){
 
         const winner=
             P.find(
-                p =>
-                    !S.elim[p]
+                p=>!S.elim[p]
             );
 
         $("role").textContent=
             winner
-                ? `Game Over — ${Pname(winner)} wins`
-                : "Game Over";
+                ?`Game Over — ${Pname(winner)} wins`
+                :"Game Over";
 
     }else{
 
         $("role").textContent=
             S.seat
-                ? `Seat: ${Pname(S.seat)}${
+                ?`Seat: ${Pname(S.seat)}${
                     S.seat===active&&check
-                        ? " — CHECK"
-                        : ""
+                        ?" — CHECK"
+                        :""
                 }`
-                : "Seat: Spectator";
+                :"Seat: Spectator";
     }
 
-    P.forEach(
-        p=>{
+    P.forEach(p=>{
 
-            const card=
-                $("card-"+p);
+        const card=
+            $("card-"+p);
 
-            const name=
-                $("name-"+p);
+        const name=
+            $("name-"+p);
 
-            const score=
-                $("score-"+p);
+        const score=
+            $("score-"+p);
 
-            const button=
-                document.querySelector(
-                    `[data-seat="${p}"]`
-                );
-
-            card.className=
-                `player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1 ${
-                    active===p&&!S.gameOver
-                        ? "active-"+p
-                        : ""
-                }`;
-
-            score.textContent=
-                String(
-                    Number(
-                        S.scores[p]
-                    )||0
-                );
-
-            name.classList.toggle(
-                "pulse",
-                active===p&&!S.gameOver
+        const button=
+            document.querySelector(
+                `[data-seat="${p}"]`
             );
 
-            if(
-                S.elim[p]
-            ){
+        card.className=
+            `player-card glass rounded-2xl p-3 border-2 border-transparent transition-all flex-1 ${
+                active===p&&!S.gameOver
+                    ?"active-"+p
+                    :""
+            }`;
 
-                name.textContent=
-                    Pname(p)+
-                    " (Out)";
+        score.textContent=
+            String(
+                Number(
+                    S.scores[p]
+                )||0
+            );
 
-                name.classList.add(
-                    "out-text"
+        name.classList.toggle(
+            "pulse",
+            active===p&&!S.gameOver
+        );
+
+        if(S.elim[p]){
+
+            name.textContent=
+                Pname(p)+
+                " (Out)";
+
+            name.classList.add(
+                "out-text"
+            );
+
+        }else if(S.gameOver){
+
+            name.textContent=
+                Pname(p)+
+                " (Winner)";
+
+            name.classList.remove(
+                "out-text"
+            );
+
+        }else if(S.bots[p]){
+
+            name.textContent=
+                Pname(p)+
+                " (Bot)";
+
+            name.classList.remove(
+                "out-text"
+            );
+
+        }else if(S.seats[p]){
+
+            name.textContent=
+                Pname(p)+
+                (
+                    S.seats[p]===uid
+                        ?" (You)"
+                        :" (Player)"
                 );
 
-            }else if(
-                S.gameOver
-            ){
+            name.classList.remove(
+                "out-text"
+            );
 
-                name.textContent=
-                    Pname(p)+
-                    " (Winner)";
+        }else{
 
-                name.classList.remove(
-                    "out-text"
-                );
+            name.textContent=
+                Pname(p)+
+                " (Open)";
 
-            }else if(
-                S.bots[p]
-            ){
-
-                name.textContent=
-                    Pname(p)+
-                    " (Bot)";
-
-                name.classList.remove(
-                    "out-text"
-                );
-
-            }else if(
-                S.seats[p]
-            ){
-
-                name.textContent=
-                    Pname(p)+
-                    (
-                        S.seats[p]===uid
-                            ? " (You)"
-                            : " (Player)"
-                    );
-
-                name.classList.remove(
-                    "out-text"
-                );
-
-            }else{
-
-                name.textContent=
-                    Pname(p)+
-                    " (Open)";
-
-                name.classList.remove(
-                    "out-text"
-                );
-            }
-
-            if(button){
-
-                button.className=
-                    (
-                        S.bots[p]||
-                        S.seats[p]||
-                        S.gameOver||
-                        p==="red"
-                    )
-                        ? "hidden"
-                        : "seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1";
-            }
+            name.classList.remove(
+                "out-text"
+            );
         }
-    );
+
+        if(button){
+
+            button.className=
+                (
+                    S.bots[p]||
+                    S.seats[p]||
+                    S.gameOver||
+                    p==="red"
+                )
+                    ?"hidden"
+                    :"seat mt-2 text-[10px] bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-1";
+        }
+    });
 }
 
 lucide.createIcons();
